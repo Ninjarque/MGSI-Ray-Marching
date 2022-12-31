@@ -177,7 +177,7 @@ void Renderer::draw(Camera& camera, Scene& scene, float deltaTime){
 		redraw = true;
 		steps = 1;
 	}
-	glUniform1f(locMoving, redraw ? 1.0f : 0.0f);
+	glUniform1f(locMoving, (redraw) ? 1.0f : 0.0f);
 
 	// /*CODE POUR ENVOYER LES INFOS DE LA SCENE AU SHADER A FAIRE ICI
 	//L'objectif est d'envoyer des listes de donnees au shader
@@ -257,7 +257,7 @@ void Renderer::draw(Camera& camera, Scene& scene, float deltaTime){
 
 	glUniform1i(currentFrameLocation, 0);
 	glUniform1i(newFrameLocation, 1);
-	if (redraw)
+	if (redraw || wasRedrawn)
 	{
 		glUniform1f(keepLastFrameLocation, 0.0f);
 	}
@@ -287,6 +287,8 @@ void Renderer::draw(Camera& camera, Scene& scene, float deltaTime){
 	glBindTexture(GL_TEXTURE_2D, finalTextureBuffer);
 	glBindVertexArray(vao);
 	glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
+
+	wasRedrawn = redraw;
 }
 
 

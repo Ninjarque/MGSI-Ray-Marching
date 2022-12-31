@@ -129,7 +129,7 @@ int main(int argc, char** argv)
         {
             movement = normalize(movement);
             //std::cout << "moved camera (" << movement.x << "," << movement.y << "," << movement.z << ")" << std::endl;
-            camera.move(movement * deltaTime);
+            camera.move(movement * deltaTime * 3.0f);
         }
 
         renderer.draw(camera, scene, deltaTime);

@@ -14,15 +14,17 @@ in vec2 coord;
 
 out vec4 finalColor;
 
-float max_steps = 100;
-float max_light_dist = 10.0f;
-float epsilon = 0.00001;
-float max_dist = 10000.0;
+float max_dist = 100.0f;
+float max_light_dist = 100.0f;
+float epsilon = 0.001;
+float light_epsilon = 0.01;
 
 float focalDist = 5.0;
-float aperture = 0.1;
+float aperture = 0.05;
 
 vec3 lightPos = vec3(2.0, -3.0, -2.0);
+vec3 backgroundColor = vec3(0.4,0.5,1.0);
+vec3 ambientColor = vec3(0.1,0.2,0.4);
 
 vec3 movement = vec3(1.9, 0.0, 0.0);
 
@@ -30,11 +32,17 @@ float rand(float co) { return fract(sin(co*(91.3458)) * 47453.5453); }
 float rand(vec2 co){ return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453); }
 float rand(vec3 co){ return rand(co.xy+rand(co.z)); }
 float rand(vec3 co, float time){ return rand(co.xy+rand(co.z*time)); }
-
+float rand_gaussian(vec3 seed, float time)
+{
+  float u1 = max(rand(seed, time), 0.00001);
+  float u2 = rand(seed + vec3(1.0,0.0,0.0), time);
+  //return u1 * 2.0 - 1.0;
+  return sqrt(-2.0 * log(u1)) * cos(2.0 * 3.14159 * u2);
+}
 
 vec3 movementBlur(vec3 point, vec3 dir, vec3 movement)
 {
-  float rnd = rand(dir, time);
+  float rnd = (rand_gaussian(dir, time) / 2.0 + 0.5);
   return rnd * movement;
 }
 
@@ -172,7 +180,7 @@ void scene(vec3 point, vec3 dir, out float dist, out vec3 color, out vec3 normal
 void main() {
   vec3 origin = -cameraPosition;
 
-  vec3 color = vec3(0.0f, 0.0f, 0.0f);
+  vec3 color = backgroundColor;//vec3(0.0f, 0.0f, 0.0f);
 
   float min_dist = max_dist;
   vec3 point = origin;
@@ -183,18 +191,22 @@ void main() {
   //ici profondeur de champ, a savoir créer un focalPoint a partir de la direction initiale et de la focalDist
   //déplacer le point origine de manière aléatoire puis déterminer une nouvelle direction entre l'origine et le focalPoint
   vec3 FocalPoint = direction * focalDist + point;
-  vec3 offsetpoint = vec3((rand(direction,time)-0.5)*2.0,(rand(direction+direction,time)-0.5)*2.0,(rand(direction+direction*2.0,time)-0.5)*2.0);
+  vec3 offsetpoint = vec3(
+    rand_gaussian(dir,time),
+    rand_gaussian(point*2.0+dir*2.0,time*5.0),
+    rand_gaussian(dir*3.0+point,time*2.0));
   point += offsetpoint * aperture;
   direction = normalize(FocalPoint - point);
   
   if (moving > 0.0)
   {
-    epsilon = 0.001;
-    max_steps = 20;
-    max_light_dist = 3.0;
+    epsilon = 0.05;
+    light_epsilon = 0.05;
+    max_dist = 10.0;
+    max_light_dist = 6.0;
   }
 
-  for (float step = 0; step < max_steps; step += 1.0)
+  for (float step = epsilon; step < max_dist;)
   {
     float d;
     vec3 c;
@@ -204,44 +216,48 @@ void main() {
     if (d <= epsilon)
     {
       vec3 light_dir = normalize(lightPos - point); //reflect(direction, n);
-      vec3 p = point + n * epsilon * 1.1;
+      vec3 p = point + n * light_epsilon * 1.01;
       float light_dist = max_dist;
       vec3 lc;
       vec3 ln;
       float light_step = 0.0;
       float light_power = 1.0;
       bool stopped = false;
-      float plight_dist = epsilon;
-      for (light_step = epsilon; light_step <= max_light_dist;)
+      float plight_dist = 1e20;
+      float k = 128.0;
+      for (light_step = light_epsilon; light_step <= max_light_dist;)
       {
         scene(p, light_dir, light_dist, lc, ln);
-        if (light_dist <= epsilon)
+        if (light_dist <= light_epsilon)
         {
           stopped = true;
           light_power = 0.0;
           break;
         }
-        //light_power = min(light_power, 32.0 * light_dist / light_step);
+        //light_power = min(light_power, k * light_dist / light_step);
         float y = light_dist*light_dist/(2.0*plight_dist);
         float d = sqrt(light_dist*light_dist-y*y);
-        light_power = min(light_power, 32.0*d/max(0.0,light_step-y));
+        light_power = min(light_power, k*d/max(0.0,light_step-y));
         p += light_dist * light_dir;
         light_step += light_dist;
         plight_dist = light_dist;
       }
       float light = light_power; //min(1.0, light + light_step / (max_light_dist)*1.0);
-      color = c * pow(1.0 - step / (max_steps), 1.0) * pow(light, 1.0);
+      light = pow(light, 1.0);
+      float AO = 1.0 - pow(step / (max_dist), 4.0);
+      color = c * AO * light; //+ (1.0 - light) * ambientColor;
       hit = true;
       break;
     }
     point += d * direction;
+    step += d;
   }
-  if (!hit)
+  /*if (!hit)
   {
     discard;
     return;
-  }
+  }*/
 
   //color = vec3(abs(dir.x), abs(dir.y), abs(dir.z));
-  finalColor = vec4(color, 1.);
+  finalColor = vec4(color + ambientColor, 1.);
 }

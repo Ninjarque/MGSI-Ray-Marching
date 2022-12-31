@@ -54,6 +54,7 @@ private:
 
   float time;
   int steps = 0;
+  bool wasRedrawn = false;
 
   int locTime;
   int locDeltaTime;
