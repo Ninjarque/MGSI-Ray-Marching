@@ -35,8 +35,8 @@ float rand(vec3 co, float time){ return rand(co.xy+rand(co.z*time)); }
 float rand_gaussian(vec3 seed, float time)
 {
   float u1 = max(rand(seed, time), 0.00001);
-  float u2 = rand(seed + vec3(1.0,0.0,0.0), time);
-  //return u1 * 2.0 - 1.0;
+  float u2 = rand(seed + vec3(1.0,-1.0,5.358), time*fract(time));
+  //return (u1 * 2.0 - 1.0 + u2 * 2.0 - 1.0) / 2.0;
   return sqrt(-2.0 * log(u1)) * cos(2.0 * 3.14159 * u2);
 }
 
@@ -152,7 +152,7 @@ void scene(vec3 point, vec3 dir, out float dist, out vec3 color, out vec3 normal
     color = vec3(1.0, 1.0, 1.0);
     normale = n;
   }
-  sphereInfos(point, vec3(-2, 0, -5), 1.0, d, n);
+  sphereInfos(point, vec3(-1.5, -0.75, -4.5), 1.0, d, n);
   if (d < dist)
   {
     dist = d;
@@ -193,7 +193,7 @@ void main() {
   vec3 FocalPoint = direction * focalDist + point;
   vec3 offsetpoint = vec3(
     rand_gaussian(dir,time),
-    rand_gaussian(point*2.0+dir*2.0,time*5.0),
+    rand_gaussian(point*2.0+dir*2.0,-time*5.0),
     rand_gaussian(dir*3.0+point,time*2.0));
   point += offsetpoint * aperture;
   direction = normalize(FocalPoint - point);
@@ -201,9 +201,9 @@ void main() {
   if (moving > 0.0)
   {
     epsilon = 0.05;
-    light_epsilon = 0.05;
+    light_epsilon = 0.1;
     max_dist = 10.0;
-    max_light_dist = 6.0;
+    max_light_dist = 5.0;
   }
 
   for (float step = epsilon; step < max_dist;)
