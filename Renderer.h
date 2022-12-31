@@ -38,6 +38,7 @@ private:
   unsigned int newFrameLocation;
   unsigned int keepLastFrameLocation;
   unsigned int timeFrameLocation;
+  unsigned int stepsFrameLocation;
   unsigned int framebufferProgramID;
   unsigned int basicProgramID;
 
@@ -52,6 +53,7 @@ private:
   int screenHeight;
 
   float time;
+  int steps = 0;
 
   int locTime;
   int locDeltaTime;

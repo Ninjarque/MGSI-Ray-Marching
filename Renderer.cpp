@@ -102,6 +102,7 @@ void Renderer::initOpenGL(std::string shaderBaseName){
   newFrameLocation  = glGetUniformLocation(framebufferProgramID, "newFrame");
   keepLastFrameLocation = glGetUniformLocation(framebufferProgramID, "keep");
   timeFrameLocation = glGetUniformLocation(framebufferProgramID, "time");
+  stepsFrameLocation = glGetUniformLocation(framebufferProgramID, "steps");
 
   //recupere id
   locDeltaTime = glGetUniformLocation(programID, "deltaTime");
@@ -168,11 +169,13 @@ void Renderer::draw(Camera& camera, Scene& scene, float deltaTime){
 	glUniform1f(locTime, time);
 	time += deltaTime;
 	bool redraw =  false;
+	steps++;
 	if (camera.isMoved())
 	{
 		time = 0.0f;
 		camera.moveResolved();
 		redraw = true;
+		steps = 1;
 	}
 	glUniform1f(locMoving, redraw ? 1.0f : 0.0f);
 
@@ -262,6 +265,7 @@ void Renderer::draw(Camera& camera, Scene& scene, float deltaTime){
 		glUniform1f(keepLastFrameLocation, 1.0f);
 	}
 	glUniform1f(timeFrameLocation, time);
+	glUniform1i(stepsFrameLocation, steps);
 
 	glActiveTexture(GL_TEXTURE0 + 0); // Texture unit 0
 	glBindTexture(GL_TEXTURE_2D, finalTextureBuffer);
