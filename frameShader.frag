@@ -27,7 +27,7 @@ void main()
         return;
     }
 
-    float realKeep = keep * sigmoid(pow(time, 0.3));
-    FragColor = currentColor + (newColor - currentColor) / steps;
-                //newColor * (1 - realKeep) + currentColor * realKeep;
+    float realKeep = keep * sigmoid(pow(time, 1.0));
+    FragColor = //currentColor + (newColor - currentColor) / steps;
+                newColor * (1 - realKeep) + currentColor * realKeep;
 }
