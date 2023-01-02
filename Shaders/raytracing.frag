@@ -15,11 +15,12 @@ in vec2 coord;
 out vec4 finalColor;
 
 float max_dist = 100.0f;
+float reccursions = 3.0f;
 
-float focalDist = 5.0;
-float aperture = 0.1;
+float focalDist = 7.0;
+float aperture = 0.04;
 
-vec3 light_pos = vec3(2.0, -3.0, -2.0);
+vec3 light_pos = vec3(-1.0, -7.0, -2.0);
 vec3 backgroundColor = vec3(0.4,0.5,1.0);
 vec3 ambientColor = vec3(0.1,0.2,0.4);
 
@@ -34,6 +35,19 @@ float rand_gaussian(vec3 seed, float time)
   //return (u1 * 2.0 - 1.0 + u2 * 2.0 - 1.0) / 2.0;
   return sqrt(-2.0 * log(u1)) * cos(2.0 * 3.14159 * u2);
   //return pow(u1, 0.25) * 2.0 - 1.0;
+}
+
+mat4 rotationMatrix(vec3 axis, float angle)
+{
+    axis = normalize(axis);
+    float s = sin(angle);
+    float c = cos(angle);
+    float oc = 1.0 - c;
+    
+    return mat4(oc * axis.x * axis.x + c,           oc * axis.x * axis.y - axis.z * s,  oc * axis.z * axis.x + axis.y * s,  0.0,
+                oc * axis.x * axis.y + axis.z * s,  oc * axis.y * axis.y + c,           oc * axis.y * axis.z - axis.x * s,  0.0,
+                oc * axis.z * axis.x - axis.y * s,  oc * axis.y * axis.z + axis.x * s,  oc * axis.z * axis.z + c,           0.0,
+                0.0,                                0.0,                                0.0,                                1.0);
 }
 
 vec3 movementBlur(vec3 point, vec3 dir, vec3 movement)
@@ -66,7 +80,7 @@ bool planeInfos(vec3 point, vec3 dir, vec3 position, vec3 normale, out float dis
   return (dist > 0.0) && (dist < max_dist);
 }
 
-bool scene(vec3 point, vec3 dir, out float dist, out vec3 color, out vec3 normale)
+bool scene(vec3 point, vec3 dir, out float dist, out vec3 color, out vec3 normale, out float roughness)
 {
   bool hit = false;
   dist = max_dist;
@@ -79,6 +93,7 @@ bool scene(vec3 point, vec3 dir, out float dist, out vec3 color, out vec3 normal
     color = vec3(1.0, 0.0, 0.0);
     normale = n;
     hit = true;
+    roughness = 0.0;
   }
   if (planeInfos(point, dir, vec3(0.0, 3.0, 0.0), vec3(0, -1, 0), d, n) && d < dist)
   {
@@ -86,6 +101,7 @@ bool scene(vec3 point, vec3 dir, out float dist, out vec3 color, out vec3 normal
     color = vec3(1.0, 1.0, 1.0);
     normale = n;
     hit = true;
+    roughness = 0.0;
   }
   if (sphereInfos(point, dir, vec3(-1.5, -0.75, -4.5), 1.0, d, n) && d < dist)
   {
@@ -93,6 +109,7 @@ bool scene(vec3 point, vec3 dir, out float dist, out vec3 color, out vec3 normal
     color = vec3(0.0, 0.0, 1.0);
     normale = n;
     hit = true;
+    roughness = 0.0;
   }
   if (sphereInfos(point, dir, vec3(1.5, -0.5, -4.5), 1.0, d, n) && d < dist)
   {
@@ -100,13 +117,25 @@ bool scene(vec3 point, vec3 dir, out float dist, out vec3 color, out vec3 normal
     color = vec3(1.0, 0.0, 1.0);
     normale = n;
     hit = true;
+    roughness = 0.0;
   }
-  if (planeInfos(point, dir, vec3(-8.0, 0.0, 0.0), vec3(1, 0, 0), d, n) && d < dist)
+  ///*
+  if (sphereInfos(point, dir, vec3(-8.5, -5.5, -4.5), 6.0, d, n) && d < dist)
   {
     dist = d;
-    color = vec3(1.0, 1.0, 1.0);
+    color = vec3(0.0, 0.0, 1.0);
     normale = n;
     hit = true;
+    roughness = 0.0;
+  }
+  //*/
+  if (planeInfos(point, dir, vec3(-5.0, 0.0, 0.0), vec3(1, 0, 0), d, n) && d < dist)
+  {
+    dist = d;
+    color = vec3(0.95, 0.95, 0.95);
+    normale = n;
+    hit = true;
+    roughness = 0.3;
   }
   return hit;
 }
@@ -132,7 +161,7 @@ void main() {
   
   if (moving > 0.0)
   {
-    max_dist = 10.0;
+    max_dist *= 0.75;
   }
 
   vec3 light_specular = vec3(1.3, 1.3, 1.3);
@@ -140,29 +169,71 @@ void main() {
   float dist;
   vec3 c;
   vec3 n;  
-  if (scene(point, direction, dist, c, n))
+  float r;
+  if (scene(point, direction, dist, c, n, r))
   {
-    vec3 hit_point = point + dist * direction + n * 0.001;
-    vec3 light_dir = normalize(light_pos - hit_point);
-    vec3 lc;
-    vec3 nc;
-    float diffuse = 0.0;
-    float specular = 0.0;
-    float reflectivity = 0.0;
-    if (!scene(hit_point, light_dir, dist, lc, nc))
+    vec3 cummulatedColor = vec3(1.0, 1.0, 1.0);
+    float steps = 0.0;
+    vec3 currentC = c;
+    for (float step = 0.0; step < reccursions + 1; step++)
     {
-      diffuse = 1.0;
-      vec3 reflected_dir = reflect(direction, n);
-      specular = max(0.0, dot(reflected_dir, light_dir));
-      specular = pow(specular, 32.0);
+      float diffuse = 0.0;
+      float specular = 0.0;
+      float reflectivity = 0.0;
+      vec3 hit_point = point + dist * direction + n * 0.001;
+      vec3 light_dir = normalize(light_pos - hit_point);
+      vec3 lc;
+      vec3 nc;
+      float rc;
+      vec3 ambientC;
+      vec3 ambientN;
+      float ambientRoughness;
 
-      vec3 ambient_point = hit_point + light_dir * dist + n * 0.001;
-      if (scene(ambient_point, reflected_dir, dist, lc, nc))
+      vec3 reflected_dir = reflect(direction, n);
+          vec3 roughnessAxis = vec3(
+          rand_gaussian(hit_point, time),
+          rand_gaussian(hit_point*2.0, -time),
+          rand_gaussian(-hit_point, time * 2.0));
+      reflected_dir = normalize(reflected_dir + roughnessAxis * r * r);
+      specular = max(0.0, dot(reflected_dir, light_dir));
+      if (!scene(hit_point, light_dir, dist, lc, nc, rc) || dist >= length(light_pos - hit_point))
       {
-        reflectivity = 1.0;
+        diffuse = max(0.0, dot(n, light_dir));
+        specular = pow(specular, 32.0);
+
+        vec3 ambient_point = hit_point;
+        if (scene(ambient_point, reflected_dir, dist, ambientC, ambientN, ambientRoughness))
+        {
+          reflectivity = 1.0;
+          n = ambientN;
+          point = ambient_point;
+          /*
+          vec3 roughnessAxis = vec3(
+          rand_gaussian(ambient_point, time),
+          rand_gaussian(ambient_point*2.0, -time),
+          rand_gaussian(-ambient_point, time * 2.0));
+          //mat4 r = rotationMatrix(roughnessAxis, rand(time));
+          direction = normalize(reflected_dir + roughnessAxis * r);
+          */
+          direction = reflected_dir;
+          r = ambientRoughness;
+        }
       }
+      if (diffuse == 0.0f)
+      {
+        cummulatedColor *= diffuse;
+        break;
+      }
+
+      steps++;
+      vec3 stepColor = currentC * diffuse * 1.0 + specular * light_specular * 1.0 + currentC * ambientC * reflectivity * 0.0;
+      cummulatedColor *= stepColor; // sqrt(i + 1.0);
+      if (reflectivity == 0.0)
+        break;
+      currentC *= ambientC;
+      c = ambientC;
     }
-    color = (c * diffuse + specular * light_specular)*1.0 + lc * c * reflectivity;
+    color = cummulatedColor;
   }
 
   finalColor = vec4(color + ambientColor, 1.);
