@@ -24,7 +24,7 @@ vec3 resultCumulatedColor[100];
 int resultParent[100];
 
 const int REFLECTION = 1;
-const int REFRACTION = 1;
+const int REFRACTION = 2;
 
 int results = 0;
 int tasksPushed = 0;
@@ -97,7 +97,7 @@ out float reflectivity, out float opacity, out float roughness)
   vec3 n;
   vec3 mblur = movementBlur(point, dir, vec3(0.0, 1.0, 0.0));
   opacity = 1.0;
-  if (sphereInfos(point, dir, vec3(0, -2, -5) + mblur, 1.0, d, n) && d < dist)
+  if (sphereInfos(point, dir, vec3(0, -2, -5) + mblur*0.0, 1.0, d, n) && d < dist)
   {
     dist = d;
     color = vec3(1.0, 0.0, 0.0);
@@ -130,11 +130,11 @@ out float reflectivity, out float opacity, out float roughness)
   if (sphereInfos(point, dir, vec3(1.5, -0.5, -4.5), 1.0, d, n) && d < dist)
   {
     dist = d;
-    color = vec3(1.0, 0.0, 1.0)*0.3;
+    color = vec3(1.0, 0.6, 1.0)*0.8;
     normale = n;
     hit = true;
-    reflectivity = 0.0;
-    opacity = 0.1;
+    reflectivity = 0.8;
+    opacity = 0.2;
     roughness = 0.0;
   }
   /*
@@ -152,11 +152,11 @@ out float reflectivity, out float opacity, out float roughness)
   if (planeInfos(point, dir, vec3(-5.0, 0.0, 0.0), vec3(1, 0, 0), d, n) && d < dist)
   {
     dist = d;
-    color = vec3(0.95, 0.95, 0.95)*0.7;
+    color = vec3(0.95, 0.95, 0.95)*0.8;
     normale = n;
     hit = true;
     reflectivity = 0.9;
-    opacity = 1.0;
+    opacity = 0.5;
     roughness = 0.0;
   }
   return hit;
@@ -218,6 +218,33 @@ vec3 getRealColor(vec3 point, vec3 normal, vec3 reflectionDir,
     specular = pow(specular, 32.0);
     diffuse = max(0.0, dot(normal, light_dir));
     result = currentColor * diffuse + lightSpecular * specular;
+  }
+  else if (opacity < 1.0)
+  {
+    float specular = max(0.0, dot(reflectionDir, light_dir));
+    specular = pow(specular, 32.0) * opacity;
+    diffuse = max(0.0, dot(normal, light_dir));
+
+    vec3 transparentLeak = vec3(1.0,1.0,1.0);
+    float distLight = length(light_pos - point);
+    float totalDist = dist;
+    bool hit = true;
+    while (totalDist < distLight && hit && opacity < 1.0) 
+    {
+      transparentLeak *= (vec3(1.0,1.0,1.0) * (1.0-opacity) + opLightColor * opacity);
+      point = point + light_dir * dist;
+      hit = scene(point, light_dir, dist, opLightColor, opNormal, reflectivity, opacity, roughness);
+      totalDist += dist;
+    }
+    if (totalDist >= distLight || opacity < 1.0)
+    {
+      result = transparentLeak * currentColor * diffuse 
+      + transparentLeak * lightSpecular * specular;
+    }
+    else
+    {
+      result *= 0.0; done = true;
+    }
   }
   else { result *= 0.0; done = true; }
   return result;
@@ -325,7 +352,7 @@ void main() {
       if (toOpacity < 1.0)
       {
         pushTask(toPoint, toOpacityDir, 0, REFRACTION);
-        pushResult(realColor, 1.0 - toOpacity, 0);
+        pushResult(vec3(1.0,1.0,1.0), 1.0, 0);
       }
     }
 
@@ -353,12 +380,16 @@ void main() {
         if (toReflectivity > 0.0)
           pushTask(toPoint, toReflectionDir, depth + 1, REFLECTION);
         if (toOpacity < 1.0)
-          pushTask(toPoint, toOpacityDir, depth + 1, REFRACTION);
+          pushTask(toPoint-toNormal*0.01, toOpacityDir, depth + 1, REFRACTION);
 
         if (type == REFLECTION)
+        {
           pushResult(realColor, toReflectivity, resultIndice);
+        }
         else
-          pushResult(realColor, 1.0 - toOpacity, resultIndice);
+        {
+          pushResult(realColor, 1.0, resultIndice);
+        }
       }
       else
       {
