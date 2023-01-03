@@ -97,7 +97,7 @@ out float reflectivity, out float opacity, out float roughness)
   vec3 n;
   vec3 mblur = movementBlur(point, dir, vec3(0.0, 1.0, 0.0));
   opacity = 1.0;
-  if (sphereInfos(point, dir, vec3(0, -2, -5) + mblur*0.0, 1.0, d, n) && d < dist)
+  if (sphereInfos(point, dir, vec3(0, -2, -5) + mblur, 1.0, d, n) && d < dist)
   {
     dist = d;
     color = vec3(1.0, 0.0, 0.0);
@@ -110,12 +110,12 @@ out float reflectivity, out float opacity, out float roughness)
   if (planeInfos(point, dir, vec3(0.0, 3.0, 0.0), vec3(0, -1, 0), d, n) && d < dist)
   {
     dist = d;
-    color = vec3(1.0, 1.0, 1.0)*0.5;
+    color = vec3(1.0, 1.0, 1.0)*0.3;
     normale = n;
     hit = true;
     reflectivity = 0.9;
     opacity = 1.0;
-    roughness = 0.3;
+    roughness = 0.2;
   }
   if (sphereInfos(point, dir, vec3(-1.5, -0.75, -4.5), 1.0, d, n) && d < dist)
   {
@@ -134,7 +134,7 @@ out float reflectivity, out float opacity, out float roughness)
     normale = n;
     hit = true;
     reflectivity = 0.8;
-    opacity = 0.2;
+    opacity = 1.0;
     roughness = 0.0;
   }
   /*
@@ -156,8 +156,8 @@ out float reflectivity, out float opacity, out float roughness)
     normale = n;
     hit = true;
     reflectivity = 0.9;
-    opacity = 0.5;
-    roughness = 0.0;
+    opacity = 1.0;
+    roughness = 0.3;
   }
   return hit;
 }

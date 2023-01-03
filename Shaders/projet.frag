@@ -26,6 +26,19 @@ vec3 lightPos = vec3(2.0, -3.0, -2.0);
 vec3 backgroundColor = vec3(0.4,0.5,1.0);
 vec3 ambientColor = vec3(0.1,0.2,0.4);
 
+uniform mat4 objectMatrices[100];
+uniform int objectTypes[100];
+uniform float objectDatas[100];
+uniform int csg_type[100];
+uniform float csg_data[100];
+uniform int csg_number;
+
+uniform vec3 color[100];
+uniform float diffuse[100];
+uniform float specular[100];
+uniform float reflection[100];
+uniform float roughness[100];
+
 float rand(float co) { return fract(sin(co*(91.3458)) * 47453.5453); }
 float rand(vec2 co){ return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453); }
 float rand(vec3 co){ return rand(co.xy+rand(co.z)); }
