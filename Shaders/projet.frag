@@ -222,12 +222,16 @@ void scene(vec3 point, vec3 dir, out float dist, out vec3 color, out vec3 normal
       case OBJ_TYPE_SPHERE:
         float radius = objectDatas[dataStartIndice];
         sphereInfos((m * vec4(point, 1.0)).xyz, c_dist, c_normal);
-        c_normal = normalize(mI * vec4(c_normal, 1.0) - point);
+        c_normal = mI * vec4(c_normal, 1.0) - point;
+        vec3 normalOffset = rand_dir(point, time);
+        c_normal = normalize(c_normal + normalOffset * ro * ro);
         break;
       }
-      pushObject(c_dist, c_normal, c, d, s, re, ro);
+      pushObject(c_dist, c_normal, c, d, s, re);
       objectIndice--;
       break;
+
+    
     }
   }
 
