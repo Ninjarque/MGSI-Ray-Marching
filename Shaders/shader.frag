@@ -26,6 +26,8 @@ vec3 lightPos = vec3(2.0, -3.0, -2.0);
 vec3 backgroundColor = vec3(0.4,0.5,1.0);
 vec3 ambientColor = vec3(0.1,0.2,0.4);
 
+vec3 movement = vec3(1.9, 0.0, 0.0);
+
 float rand(float co) { return fract(sin(co*(91.3458)) * 47453.5453); }
 float rand(vec2 co){ return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453); }
 float rand(vec3 co){ return rand(co.xy+rand(co.z)); }
@@ -44,25 +46,8 @@ vec3 movementBlur(vec3 point, vec3 dir, vec3 movement)
   return rnd * movement;
 }
 
-
-// specular
-float computeSpecular(vec3 normal,vec3 point, vec3 camPos,vec3 light_pos){
-	    vec3 light_dir =  light_pos - point;
-        light_dir = normalize(light_dir);
-        vec3 eyeDirection = normalize(camPos - point);
-        vec3 reflectedLight = reflect(-light_dir, normal);
-        float spec = max(0., dot(reflectedLight, eyeDirection));
-        spec = pow(spec, 15.);
-      return spec;
-}
-//diffuse 
-float  computeDiffuse(vec3 normal,vec3 point, vec3 light_pos){ 
-	  vec3 light_dir =  light_pos - point;
-      light_dir = normalize(light_dir);
-      float dif = max(0.,dot(normal, light_dir)); 
-      return dif;
-}
-
+//Liste des méthodes de primitives: sphere,cube,torus,etc..
+//methode de primitive : on calcule la distance autour d'un point qui représente un objet.
 float sphere(vec3 point, vec3 position, float radius)
 {
   return distance(point, position) -radius;
@@ -110,6 +95,7 @@ float torus( vec3 p, vec3 position, vec2 t)
   return length(q)-t.y;
 }
 
+//Liste des méthodes qui utilisent les fonctions de primitives pour représenter un objet dans la scene.
 void sphereInfos(vec3 point, vec3 position, float radius, out float dist, out vec3 normale)
 {
   dist = sphere(point, position, radius);
@@ -199,21 +185,31 @@ void main() {
   vec3 color = backgroundColor;//vec3(0.0f, 0.0f, 0.0f);
 
   float min_dist = max_dist;
+  
+  //On crée une variable point qui correspond a la position de la camera.C'est de ce point que les rayons sont tracés.
   vec3 point = origin;
+  
+  //On crée une variable direction qui est la direction actuelle du rayon partant de l'origine.
   vec3 direction = dir;
 
   bool hit = false;
 
-  //ici profondeur de champ, a savoir créer un focalPoint a partir de la direction initiale et de la focalDist
-  //déplacer le point origine de manière aléatoire puis déterminer une nouvelle direction entre l'origine et le focalPoint
+  //On crée un point focal appelé focalPoint a partir de la direction initial du rayon dir et d'une distance focale arbitraire, ici 5. On multiple ça par point pour que la variable FocalPoint soit considéré comme un Point.
+  //FocalPoint représente le point qui va servir à déterminer si la camera est assez proche ou non pour voir de manière net un objet.
   vec3 FocalPoint = direction * focalDist + point;
+  /on crée un point aléatoire qu'on va utiliser pour deplacer la variale point, chaque coordonnée est calculée aléatoire avec la methode rand_gaussian
   vec3 offsetpoint = vec3(
     rand_gaussian(dir,time),
     rand_gaussian(point*2.0+dir*2.0,-time*5.0),
     rand_gaussian(dir*3.0+point,time*2.0));
+
+  //On déplace la variable point avec le offsetpoint calculé avec un coefficient aperture .  
   point += offsetpoint * aperture;
+  //on change la direction du rayon origine par une direction qui passe par le point FocalPoint et qui part du nouveau point point déplacé aléatoirement.
   direction = normalize(FocalPoint - point);
   
+  //fin 
+
   if (moving > 0.0)
   {
     epsilon = 0.05;
@@ -228,11 +224,11 @@ void main() {
     vec3 c;
     vec3 n;
     scene(point, direction, d, c, n);
+    //movementBlur(point, direction, n, movement, d);
     if (d <= epsilon)
     {
       vec3 light_dir = normalize(lightPos - point); //reflect(direction, n);
       vec3 p = point + n * light_epsilon * 1.01;
-      vec3 startP = p;
       float light_dist = max_dist;
       vec3 lc;
       vec3 ln;
@@ -261,10 +257,11 @@ void main() {
       float light = light_power; //min(1.0, light + light_step / (max_light_dist)*1.0);
       light = pow(light, 1.0);
       float AO = 1.0 - pow(step / (max_dist), 4.0);
-      color = c * AO * light * (computeDiffuse(n, startP, lightPos) + computeSpecular(n, p, point, lightPos)); //+ (1.0 - light) * ambientColor;
+      color = c * AO * light; //+ (1.0 - light) * ambientColor;
       hit = true;
       break;
     }
+    //on fait avancer le point dans sa direction
     point += d * direction;
     step += d;
   }
