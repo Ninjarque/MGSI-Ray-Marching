@@ -101,6 +101,3 @@ vec3 Camera::getUp() const { // avoir le haut de la camera
     up = getRotationMatrix() * up;
     return vec3(up.x, up.y, up.z);
 }
-//vec3 Camera::getTranslation() const {
-//    return this->translation ;
-//}
