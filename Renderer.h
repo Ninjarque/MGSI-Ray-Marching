@@ -66,17 +66,24 @@ private:
   int locScreenSize;
 
   int locObjectMatrices;
+  int locObjectMatricesInverse;
   int locObjectTypes;
   int locObjectDatas;
+  int locObjectNumber;
   int locCsg_types;
   int locCsg_values;
+  int locCsg_objectDatasIndices;
+  int locCsg_number;
   
+  int locMaterial;
+  int locMaterialSize;
+  /*
   int locColor;
   int locDiffuse;
   int locSpecular;
   int locReflection;
   int locRoughness;
-
+  */
 
   std::vector<float> vertices = {
     -1.0, 1.0, 0.0, 0.0, 0.0,

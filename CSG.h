@@ -14,10 +14,10 @@ class CSG
   //Et les branches possèdent deux sous arbre CSG et un type d'operation a effectuer
 public:
     enum Type {
-        Obj,
-        Union,
-        Difference,
-        Intersection
+        Obj = -1,
+        Union = 1,
+        Difference = 2,
+        Intersection = 3
     };
 
     CSG* childA = nullptr;

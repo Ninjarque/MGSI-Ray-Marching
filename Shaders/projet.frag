@@ -26,18 +26,32 @@ vec3 lightPos = vec3(2.0, -3.0, -2.0);
 vec3 backgroundColor = vec3(0.4,0.5,1.0);
 vec3 ambientColor = vec3(0.1,0.2,0.4);
 
-uniform mat4 objectMatrices[100];
-uniform int objectTypes[100];
-uniform float objectDatas[100];
-uniform int csg_type[100];
-uniform float csg_data[100];
+const int maxObjects = 100;
+const int maxCSGs = 100;
+
+uniform mat4 objectMatrices[maxObjects];
+uniform mat4 objectMatricesInverse[maxObjects];
+uniform int objectTypes[maxObjects];
+uniform float objectDatas[maxObjects];
+uniform int objectNumber;
+
+uniform int csg_type[maxCSGs];
+uniform float csg_data[maxCSGs];
+uniform int csg_objectDatasIndices[maxCSGs];
 uniform int csg_number;
 
-uniform vec3 color[100];
-uniform float diffuse[100];
-uniform float specular[100];
-uniform float reflection[100];
-uniform float roughness[100];
+uniform float material[maxObjects];
+uniform int materialSize;
+//uniform vec3 color[maxObjects];
+//uniform float diffuse[maxObjects];
+//uniform float specular[maxObjects];
+//uniform float reflection[maxObjects];
+//uniform float roughness[maxObjects];
+
+const int CSG_TYPE_OBJ = -1;
+const int CSG_TYPE_UNION = 1;
+const int CSG_TYPE_DIFFERENCE = 2;
+const int CSG_TYPE_INTERSECTION = 3;
 
 float rand(float co) { return fract(sin(co*(91.3458)) * 47453.5453); }
 float rand(vec2 co){ return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453); }
@@ -49,6 +63,13 @@ float rand_gaussian(vec3 seed, float time)
   float u2 = rand(seed + vec3(1.0,-1.0,5.358), time*fract(time));
   //return (u1 * 2.0 - 1.0 + u2 * 2.0 - 1.0) / 2.0;
   return sqrt(-2.0 * log(u1)) * cos(2.0 * 3.14159 * u2);
+}
+vec3 rand_dir(vec3 seed, float time)
+{
+  return vec3(
+          rand_gaussian(-seed*3.0, -time),
+          rand_gaussian(seed*-2.0, time),
+          rand_gaussian(seed, time * 3.0));
 }
 
 vec3 movementBlur(vec3 point, vec3 dir, vec3 movement)
@@ -131,6 +152,11 @@ void sphereInfos(vec3 point, vec3 position, float radius, out float dist, out ve
   float dz = sphere(point + vec3(0.0, 0.0, epsilon), position, radius) - dist;
   normale = vec3(dx, dy, dz) / epsilon;
 }
+void sphereInfos(vec3 point, float radius, out float dist, out vec3 normale)
+{
+  dist = length(point) -radius;
+  normale = normalize(point);
+}
 void cubeInfos(vec3 point, vec3 position, vec3 bounds, out float dist, out vec3 normale)
 {
   dist = cube(point, position, bounds);
@@ -166,8 +192,47 @@ void scene(vec3 point, vec3 dir, out float dist, out vec3 color, out vec3 normal
   dist = max_dist;
   float d;
   vec3 n;
+
+  int objectIndice = objectNumber - 1;
+  for (int i = csg_number - 1; i >= 0; i--)
+  {
+    switch (csg_type[i])
+    {
+    case CSG_TYPE_OBJ:
+      mat4 m = objectMatrices[csg_data[i]];
+      mat4 mI = objectMatricesInverse[csg_data[i]];
+      int type = objectTypes[csg_data[i]];
+      int dataStartIndice = csg_objectDatasIndices[objectIndice];
+
+      int materialIndice = objectIndice * materialSize;
+      vec3 c = vec3(
+        material[materialIndice], 
+        material[materialIndice + 1], 
+        material[materialIndice + 2]);
+      float d = material[materialIndice + 3];
+      float s = material[materialIndice + 4];
+      float re = material[materialIndice + 5];
+      float ro = material[materialIndice + 6];
+
+      float c_dist = max_dist;
+      vec3 c_color;
+      vec3 c_normal;
+      switch (type)
+      {
+      case OBJ_TYPE_SPHERE:
+        float radius = objectDatas[dataStartIndice];
+        sphereInfos((m * vec4(point, 1.0)).xyz, c_dist, c_normal);
+        c_normal = normalize(mI * vec4(c_normal, 1.0) - point);
+        break;
+      }
+      pushObject(c_dist, c_normal, c, d, s, re, ro);
+      objectIndice--;
+      break;
+    }
+  }
+
   vec3 mblur = movementBlur(point, dir, vec3(0.0, 1.0, 0.0));
-  sphereInfos(point, vec3(0, -2, -5) + mblur, 1.0, d, n);
+  sphereInfos(point, vec3(0, -2, -5) + mblur * 0.0, 1.0, d, n);
   if (d < dist)
   {
     dist = d;

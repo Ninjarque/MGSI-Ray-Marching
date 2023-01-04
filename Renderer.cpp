@@ -115,18 +115,25 @@ void Renderer::initOpenGL(std::string shaderBaseName){
   locScreenSize = glGetUniformLocation(programID, "screen_size");
 
   locObjectMatrices = glGetUniformLocation(programID, "objectMatrices");
+  locObjectMatricesInverse = glGetUniformLocation(programID, "objectMatricesInverse");
   locObjectTypes = glGetUniformLocation(programID, "objectTypes");
   locObjectDatas = glGetUniformLocation(programID, "objectDatas");
+  locObjectNumber = glGetUniformLocation(programID, "objectNumber");
   locCsg_types = glGetUniformLocation(programID, "csg_type");
   locCsg_values = glGetUniformLocation(programID, "csg_data");
+  locCsg_objectDatasIndices = glGetUniformLocation(programID, "csg_objectDatasIndices");
+  locCsg_number = glGetUniformLocation(programID, "csg_number");
   
   //material
+  locMaterial = glGetUniformLocation(programID, "material");
+  locMaterialSize = glGetUniformLocation(programID, "materialSize");
+  /*
   locColor = glGetUniformLocation(programID, "color");
   locDiffuse = glGetUniformLocation(programID, "diffuse");
   locSpecular = glGetUniformLocation(programID, "specular");
   locReflection = glGetUniformLocation(programID, "reflection");
   locRoughness = glGetUniformLocation(programID, "roughness");
-  
+  */
   //locMatrixIDObject = glGetUniformLocation(programID, "Object");
 
   glGenVertexArrays(1, &vao);
@@ -163,7 +170,6 @@ void Renderer::draw(Camera& camera, Scene& scene, float deltaTime){
 	glUniform3f(locCameraPosition,camera.getPosition().x,camera.getPosition().y,camera.getPosition().z);
 	glUniform2f(locFieldOfView, camera.getFieldOfView().x, camera.getFieldOfView().y);
 	glUniform2f(locScreenSize, (float)screenWidth, (float)screenHeight);
-	//glUniformMatrix4fv(locMatrixIDObject, 1, GL_FALSE, &Object[0][0]);
 
 	glUniform1f(locDeltaTime, deltaTime);
 	glUniform1f(locTime, time);
@@ -183,26 +189,51 @@ void Renderer::draw(Camera& camera, Scene& scene, float deltaTime){
 	//L'objectif est d'envoyer des listes de donnees au shader
 	//Pour se faire, il faudra decommenter cette partie :
 	//
+	// /*
 	vector<mat4> objectMatrices;
 	vector<Material> objectMaterials; 	
 	vector<int> objectTypes;
 	vector<float> objectDatas;
 	vector<int> csg_type;
 	vector<float> csg_value;
-	scene.getInfos(objectMatrices, objectMaterials, objectTypes, objectDatas, csg_type, csg_value);
+	vector<int> csg_objectDatasIndices;
+	scene.getInfos(objectMatrices, objectMaterials, objectTypes, objectDatas, 
+	csg_type, csg_value, csg_objectDatasIndices);
 	
-	//
-
 	glUniformMatrix4fv(locObjectMatrices, objectMatrices.size() * sizeof(mat4), 
 	GL_FALSE, &objectMatrices.data()[0][0][0]);
 
+	vector<mat4> objectMatricesInverse(objectMatrices.size());
+	int i = 0;
+	for (auto matrice : objectMatrices)
+	{
+		objectMatricesInverse[i] = inverse(matrice);
+		i++;
+	}
+	glUniformMatrix4fv(locObjectMatricesInverse, objectMatricesInverse.size() * sizeof(mat4), 
+	GL_FALSE, &objectMatricesInverse.data()[0][0][0]);
+
+	vector<float> materials(objectMaterials.size() * 10);
+
+	/*
 	vector<float> colors(objectMaterials.size() * 4);
 	vector<float> diffuse(objectMaterials.size());
 	vector<float> specular(objectMaterials.size());
 	vector<float> reflection(objectMaterials.size());
 	vector<float> roughness(objectMaterials.size());
-	
+	*/
+
+	int x = 0;
 	for(int i = 0; i < objectMaterials.size(); i++){
+		materials[x++] = objectMaterials[i].color.x;
+		materials[x++] = objectMaterials[i].color.y;
+		materials[x++] = objectMaterials[i].color.z;
+		materials[x++] = objectMaterials[i].color.w;
+		materials[x++] = objectMaterials[i].diffuse;
+		materials[x++] = objectMaterials[i].specular;
+		materials[x++] = objectMaterials[i].reflection;
+		materials[x++] = objectMaterials[i].roughness;
+		/*
 		colors[i*4+0] = objectMaterials[i].color.x;
 		colors[i*4+1] = objectMaterials[i].color.y;
 		colors[i*4+2] = objectMaterials[i].color.z;
@@ -211,23 +242,29 @@ void Renderer::draw(Camera& camera, Scene& scene, float deltaTime){
 		specular[i] = objectMaterials[i].specular;
 		reflection[i] = objectMaterials[i].reflection;
 		roughness[i] = objectMaterials[i].roughness;
+		*/
 	}
 
+	glUniform4fv(locMaterial, materials.size() * sizeof(float), materials.data());
+	glUniform1i(locMaterialSize, objectMaterials.size() / x);
+	/*
 	glUniform4fv(locColor, colors.size() * sizeof(float), colors.data());
 	glUniform1fv(locDiffuse, diffuse.size() * sizeof(float), diffuse.data());
 	glUniform1fv(locSpecular, specular.size() * sizeof(float), specular.data());
 	glUniform1fv(locReflection, reflection.size() * sizeof(float), reflection.data());
 	glUniform1fv(locRoughness, roughness.size() * sizeof(float), roughness.data());
-
+	*/
 
 	glUniform1iv(locObjectTypes, objectTypes.size() * sizeof(int), objectTypes.data());
 	glUniform1fv(locObjectDatas, objectDatas.size() * sizeof(float), objectDatas.data());
+	glUniform1i(locObjectNumber, objectTypes.size());
 	
 	glUniform1iv(locCsg_types, csg_type.size() * sizeof(int), csg_type.data());
 	glUniform1fv(locCsg_values, csg_value.size() * sizeof(float), csg_value.data());
+	glUniform1iv(locCsg_objectDatasIndices, csg_objectDatasIndices.size() * sizeof(int), csg_objectDatasIndices.data());
+	glUniform1i(locCsg_number, csg_type.size());
 
-
-
+	// */
 	/*les parametres sont note comme ca car il faut les creer avant la fonction et les passer dedans pour qu'elle les initialise
 	les donnees a envoyer (uniform ou buffer), devront respecter ce format
 	objectMatrices, array de mat4
@@ -290,8 +327,6 @@ void Renderer::draw(Camera& camera, Scene& scene, float deltaTime){
 
 	wasRedrawn = redraw;
 }
-
-
 
 
 GLuint LoadShaders(const char * vertex_file_path,const char * fragment_file_path){

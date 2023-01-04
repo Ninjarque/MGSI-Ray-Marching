@@ -71,9 +71,12 @@ int main(int argc, char** argv)
 
     Scene scene;
     Material material(vec3(1.0f,0.0f,0.0f), 0.7f, 20.0f, 0.0f);
-    Sphere sphere(vec3(0.0f, 0.0f, -10.0f), 1.0f, material);
+    Sphere sphere1(vec3(0.0f, 0.0f, -10.0f), 1.0f, material);
+    Sphere sphere2(vec3(0.0f, 3.0f, -10.0f), 2.0f, material);
 
-    CSG csg;
+    CSG csg(new CSG(&sphere1), new CSG(&sphere2), CSG::Type::Union, 1.0f);
+
+    scene.addCSG(&csg);
 
     float deltaTime = 0.0;
 
