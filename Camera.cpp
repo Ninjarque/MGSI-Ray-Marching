@@ -18,15 +18,11 @@ Camera::~Camera(){
 
 }
 Camera::Camera(const vec3 &position, const vec3 &rotation,
-               const vec2 &fieldOfView //, const vec3 &translation ,
-               //const vec3 &lookat
-               ) {
+               const vec2 &fieldOfView) {
     this->position = position ;
     this->rotation = rotation ;
     this->fieldOfView = fieldOfView ;
-    //this->translation = translation ;
-    //this->lookAt = lookat;
-
+    
     flag = true ;
     // si on change de position initial dans la fonction setPosition
     // dans la fonction moveCamera on change la valeur
