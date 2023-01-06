@@ -13,7 +13,7 @@ public:
 
     Sphere(vec3 pos, float radius, Material& material) : Object(pos, vec3(0.0f), vec3(1.0f), material)
     {
-        this->radius = radius;
+        this->radius = radius;//informations supplementaire  pour ce type d'objets
     }
 
     //Retourne le type sous forme d'int et rempli le tableau de donnees suivant
