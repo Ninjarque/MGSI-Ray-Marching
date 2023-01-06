@@ -23,6 +23,6 @@ public:
         data.push_back(normale.x);
         data.push_back(normale.y);
         data.push_back(normale.z);
-        return 3;
+        return Object::ObjectType::Plane;
     }
 };

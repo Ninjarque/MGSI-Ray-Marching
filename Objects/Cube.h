@@ -23,6 +23,6 @@ public:
         data.push_back(bounds.x);
         data.push_back(bounds.y);
         data.push_back(bounds.z);
-        return 2;
+        return Object::ObjectType::Cube;
     }
 };

@@ -20,9 +20,10 @@ using namespace glm;
 #include "Objects/Sphere.h"
 #include "Objects/Cube.h"
 #include "Objects/Plane.h"
+#include "Objects/Torus.h"
 
-int WIDTH = 800;
-int HEIGHT = 600;
+int WIDTH = 800;//800
+int HEIGHT = 600;//600
 
 Camera camera(vec3(0.0f, 0.0f, 0.0f), vec3(0.0f,0.0f,0.0f), vec2(90.0f, 90.0f));
 
@@ -74,26 +75,32 @@ int main(int argc, char** argv)
     Scene scene;
     Material white(vec3(1.0f,1.0f,1.0f), 0.7f, 20.0f, 0.2f);
     Material red(vec3(1.0f,0.0f,0.0f), 0.7f, 20.0f, 0.3f);
+    Material purple(vec3(0.7f,0.0f,0.7f), 0.7f, 20.0f, 0.1f);
     Material gold(vec3(1.0f,0.86f,0.2f), 0.9f, 20.0f, 0.0f);
 
     Sphere sphere1(vec3(0.0f, 0.0f, -5.0f), 1.0f, red);
     Cube cube1(vec3(1.0f, 0.0f, -5.0f), vec3(1.0f), white);
-    Cube cube2(vec3(3.0f, 1.0f, -5.0f), vec3(1.0f), gold);
     Plane plane(vec3(0.0f, 3.0f, 0.0f), vec3(0.0f, -1.0f, 0.0f), white);
+    Cube cube2(vec3(-2.0f, 1.0f, -3.0f), vec3(1.0f), gold);
+    Torus torus1(vec3(-2.0f, 1.0f, -2.0f), 1.0f, 0.2f, purple);
 
     CSG csg(
             //new CSG(&sphere1), 
             //new CSG(&cube1), 
             //CSG::Type::Intersection, 1.0f
         new CSG(
-            new CSG(&plane), 
-            new CSG(&cube2),
+            new CSG(
+                new CSG(&cube2),
+                new CSG(&torus1),
+                CSG::Type::Intersection, 1.0f
+            ), 
+            new CSG(&plane),
             CSG::Type::Union, 1.0f
         ), 
         new CSG(
             new CSG(&sphere1), 
             new CSG(&cube1), 
-            CSG::Type::Intersection, 1.0f
+            CSG::Type::Difference, 1.0f
         ), 
         CSG::Type::Union, 1.0f
     );

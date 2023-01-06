@@ -203,6 +203,44 @@ bool planeInfos(vec3 point, vec3 dir, vec3 normale, out float dist, out vec3 n)
 {
   return planeInfos(point, dir, vec3(0.0, 0.0, 0.0), normale, dist, n);
 }
+bool torusInfos(vec3 origin, vec3 dir, float bigRadius, float smallRadius, out float dist, out vec3 normal) {
+  // Calculate the intersection of the ray with the torus
+  float a = dot(dir, dir);
+  float b = 2.0 * dot(dir, origin);
+  float c = dot(origin, origin) + bigRadius * bigRadius - smallRadius * smallRadius;
+  float discriminant = b * b - 4.0 * a * c;
+
+  // Check if the ray intersects the torus
+  if (discriminant < 0.0) {
+    return false;
+  }
+
+  // Calculate the roots of the equation
+  float t1 = (-b - sqrt(discriminant)) / (2.0 * a);
+  float t2 = (-b + sqrt(discriminant)) / (2.0 * a);
+  
+  // Check which root is valid (i.e. positive and smaller than the distance to the closest intersection point found so far)
+  if (t1 > 0.0) {
+    dist = t1;
+  }
+  if (t2 > 0.0 && t2 < dist) {
+    dist = t2;
+  }
+
+  // Calculate the position of the intersection point
+  vec3 point = origin + dist * dir;
+
+  // Calculate the point on the central axis of the torus closest to the intersection point
+  vec2 pointOnAxis = vec2(bigRadius * cos(atan(point.y, point.x)), bigRadius * sin(atan(point.y, point.x)));
+
+  // Calculate the normal as the difference between the intersection point and the point on the central axis
+  normal = point - vec3(pointOnAxis, 0.0);
+
+  // Normalize the normal vector
+  normal = normalize(normal);
+
+  return true;
+}
 
 bool scene(vec3 point, vec3 dir, out float dist, out vec3 color, out vec3 normale,
 out float reflectivity, out float opacity, out float roughness)
@@ -294,6 +332,18 @@ out float reflectivity, out float opacity, out float roughness)
           hit_object = true; 
         }
         break;
+
+      case OBJ_TYPE_TORUS:
+        float bigR = objectDatas[dataStartIndice];
+        float smallR = objectDatas[dataStartIndice + 1];
+        if (torusInfos(c_point, dir, bigR, smallR, c_dist, c_normal))
+        {
+          dist = c_dist; color = c.xyz; normale = vec3(0.0,0.0,0.0); return true;
+          c_normal = (m * vec4(c_normal, 0.0)).xyz;
+          c_normal = normalize(c_normal + normalOffset * ro * ro);
+          hit_object = true; 
+        }
+        break;
       }
       pushObject(c_dist, c_normal, c, d, s, re, hit_object); 
       objectIndice--;
@@ -350,14 +400,7 @@ out float reflectivity, out float opacity, out float roughness)
       popObject(u_dist1, u_normal1, u_c1, u_d1, u_s1, u_re1, u_hit1);
       popObject(u_dist2, u_normal2, u_c2, u_d2, u_s2, u_re2, u_hit2);
       u_dist = max(u_dist1, u_dist2);
-      if (u_dist == u_dist2)
-      {
-        pushObject(u_dist2, u_normal2, u_c2, u_d2, u_s2, u_re2, u_hit2);
-      }
-      else
-      {
-        pushObject(u_dist1, u_normal1, u_c1, u_d1, u_s1, u_re1, u_hit1);
-      }
+      pushObject(u_dist, u_normal1, u_c1, u_d1, u_s1, u_re1, u_hit1 && u_hit2);
       break;
     }
   }

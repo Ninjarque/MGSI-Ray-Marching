@@ -244,6 +244,10 @@ void torusInfos(vec3 point, vec3 position, vec2 t, out float dist, out vec3 norm
   float dz = torus(point + vec3(0.0, 0.0, epsilon), position, t) - dist;
   normale = vec3(dx, dy, dz) / epsilon;
 }
+void torusInfos(vec3 point, float bigRadius, float smallRadius, out float dist, out vec3 normale)
+{
+  torusInfos(point, vec3(0.0,0.0,0.0), vec2(bigRadius, smallRadius), dist, normale);
+}
 
 void scene(vec3 point, vec3 dir, out float dist, out vec3 color, out vec3 normale)
 {
@@ -320,6 +324,14 @@ void scene(vec3 point, vec3 dir, out float dist, out vec3 color, out vec3 normal
         c_normal = (m * vec4(c_normal, 0.0)).xyz;
         c_normal = normalize(c_normal + normalOffset * ro * ro);
         break;
+
+      case OBJ_TYPE_TORUS:
+        float bR = objectDatas[dataStartIndice];
+        float sR = objectDatas[dataStartIndice + 1];
+        torusInfos(c_point, bR, sR, c_dist, c_normal);
+        c_normal = (m * vec4(c_normal, 0.0)).xyz;
+        c_normal = normalize(c_normal + normalOffset * ro * ro);
+        break;
       }
       pushObject(c_dist, c_normal, c, d, s, re);
       objectIndice--;
@@ -356,14 +368,14 @@ void scene(vec3 point, vec3 dir, out float dist, out vec3 color, out vec3 normal
     case CSG_TYPE_DIFFERENCE:
       popObject(u_dist1, u_normal1, u_c1, u_d1, u_s1, u_re1);
       popObject(u_dist2, u_normal2, u_c2, u_d2, u_s2, u_re2);
-      u_dist = max(u_dist1, u_dist2);
-      if (u_dist == u_dist2)
+      u_dist = max(u_dist1, -u_dist2);
+      if (u_dist == u_dist1)
       {
-        pushObject(u_dist2, u_normal2, u_c2, u_d2, u_s2, u_re2);
+        pushObject(u_dist1, u_normal1, u_c1, u_d1, u_s1, u_re1);
       }
       else
       {
-        pushObject(u_dist1, u_normal1, u_c1, u_d1, u_s1, u_re1);
+        pushObject(max_dist, u_normal2, u_c2, u_d2, u_s2, u_re2);
       }
       break;
     }

@@ -21,6 +21,6 @@ public:
     //les autres informations comme la position ou le materiel sont deja traitees ailleurs
     virtual int getTypeData(std::vector<float>& data) override {
         data.push_back(radius);
-        return 1;
+        return Object::ObjectType::Sphere;
     }
 };

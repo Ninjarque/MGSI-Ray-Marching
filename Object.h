@@ -12,6 +12,13 @@ using namespace glm;
 class Object
 {
    public:
+      enum ObjectType {
+         Sphere = 1,
+         Cube = 2,
+         Plane = 3,
+         Torus = 4,
+      };
+
       vec3 position;//position
       vec3 rotation;//vecteur de rotation
       vec3 scale;//vecteur de Mise en echelle 
