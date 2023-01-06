@@ -18,6 +18,8 @@ using namespace glm;
 #include "Timer.h"
 
 #include "Objects/Sphere.h"
+#include "Objects/Cube.h"
+#include "Objects/Plane.h"
 
 int WIDTH = 800;
 int HEIGHT = 600;
@@ -70,11 +72,28 @@ int main(int argc, char** argv)
     Renderer renderer(WIDTH, HEIGHT, shader);
 
     Scene scene;
-    Material material(vec3(1.0f,0.0f,0.0f), 0.7f, 20.0f, 0.0f);
+    Material material(vec3(1.0f,1.0f,1.0f), 0.7f, 20.0f, 0.0f);
     Sphere sphere1(vec3(0.0f, 0.0f, -10.0f), 1.0f, material);
-    Sphere sphere2(vec3(0.0f, 3.0f, -10.0f), 2.0f, material);
+    Cube cube1(vec3(1.0f, 0.0f, -10.0f), vec3(1.0f), material);
+    Cube cube2(vec3(3.0f, 1.0f, -10.0f), vec3(1.0f), material);
+    Plane plane(vec3(0.0f, 3.0f, 0.0f), vec3(0.0f, -1.0f, 0.0f), material);
 
-    CSG csg(new CSG(&sphere1), new CSG(&sphere2), CSG::Type::Union, 1.0f);
+    CSG csg(
+            //new CSG(&sphere1), 
+            //new CSG(&cube1), 
+            //CSG::Type::Intersection, 1.0f
+        new CSG(
+            new CSG(&plane), 
+            new CSG(&cube2),
+            CSG::Type::Union, 1.0f
+        ), 
+        new CSG(
+            new CSG(&sphere1), 
+            new CSG(&cube1), 
+            CSG::Type::Intersection, 1.0f
+        ), 
+        CSG::Type::Union, 1.0f
+    );
 
     scene.addCSG(&csg);
 

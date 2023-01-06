@@ -14,9 +14,9 @@ in vec2 coord;
 
 out vec4 finalColor;
 
-float max_dist = 100.0f;
-float max_light_dist = 100.0f;
-float epsilon = 0.001;
+float max_dist = 50.0f;
+float max_light_dist = 50.0f;
+float epsilon = 0.01;
 float light_epsilon = 0.01;
 
 float focalDist = 5.0;
@@ -48,10 +48,50 @@ uniform int materialSize;
 //uniform float reflection[maxObjects];
 //uniform float roughness[maxObjects];
 
-const int CSG_TYPE_OBJ = -1;
+const int CSG_TYPE_OBJ = 10;
 const int CSG_TYPE_UNION = 1;
 const int CSG_TYPE_DIFFERENCE = 2;
 const int CSG_TYPE_INTERSECTION = 3;
+
+const int OBJ_TYPE_SPHERE = 1;
+const int OBJ_TYPE_CUBE = 2;
+const int OBJ_TYPE_PLANE = 3;
+const int OBJ_TYPE_TORUS = 4;
+
+float objectStack[maxObjects * 11];
+int objectStackIndice = 0;
+void pushObject(in float dist, in vec3 normal, in vec4 color, 
+  in float diffuse, in float specular, in float reflection)
+{
+  objectStack[objectStackIndice++] = dist;
+  objectStack[objectStackIndice++] = normal.x;
+  objectStack[objectStackIndice++] = normal.y;
+  objectStack[objectStackIndice++] = normal.z;
+  objectStack[objectStackIndice++] = color.x;
+  objectStack[objectStackIndice++] = color.y;
+  objectStack[objectStackIndice++] = color.z;
+  objectStack[objectStackIndice++] = color.w;
+  objectStack[objectStackIndice++] = diffuse;
+  objectStack[objectStackIndice++] = specular;
+  objectStack[objectStackIndice++] = reflection;
+}
+void popObject(out float dist, out vec3 normal, out vec4 color, 
+  out float diffuse, out float specular, out float reflection)
+{
+  normal = vec3(0.0, 0.0, 0.0);
+  color = vec4(0.0, 0.0, 0.0, 0.0);
+  reflection = objectStack[--objectStackIndice];
+  specular = objectStack[--objectStackIndice];
+  diffuse = objectStack[--objectStackIndice];
+  color.w = objectStack[--objectStackIndice];
+  color.z = objectStack[--objectStackIndice];
+  color.y = objectStack[--objectStackIndice];
+  color.x = objectStack[--objectStackIndice];
+  normal.z = objectStack[--objectStackIndice];
+  normal.y = objectStack[--objectStackIndice];
+  normal.x = objectStack[--objectStackIndice];
+  dist = objectStack[--objectStackIndice];
+}
 
 float rand(float co) { return fract(sin(co*(91.3458)) * 47453.5453); }
 float rand(vec2 co){ return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453); }
@@ -165,9 +205,20 @@ void cubeInfos(vec3 point, vec3 position, vec3 bounds, out float dist, out vec3 
   float dz = cube(point + vec3(0.0, 0.0, epsilon), position, bounds) - dist;
   normale = vec3(dx, dy, dz) / epsilon;
 }
+void cubeInfos(vec3 point, vec3 bounds, out float dist, out vec3 normale)
+{
+  vec3 q = abs(point) - bounds;
+  dist = length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0);
+  normale = step(1.0, (point / length(point)));
+}
 void planeInfos(vec3 point, vec3 n, vec3 planePoint, out float dist, out vec3 normale)
 {
   dist = plane(point, n, planePoint);
+  normale = n;
+}
+void planeInfos(vec3 point, vec3 n, out float dist, out vec3 normale)
+{
+  dist = dot(point,normalize(n));
   normale = n;
 }
 void mandelbulbInfos(vec3 point, vec3 position, float radius, out float dist, out vec3 normale)
@@ -194,46 +245,130 @@ void scene(vec3 point, vec3 dir, out float dist, out vec3 color, out vec3 normal
   vec3 n;
 
   int objectIndice = objectNumber - 1;
+  float u_dist = 0.0;
+  float u_dist1 = 0.0;
+  vec3 u_normal1;
+  vec4 u_c1;
+  float u_d1;
+  float u_s1;
+  float u_re1;
+  float u_dist2 = 0.0;
+  vec3 u_normal2;
+  vec4 u_c2;
+  float u_d2;
+  float u_s2;
+  float u_re2;
+  
   for (int i = csg_number - 1; i >= 0; i--)
   {
     switch (csg_type[i])
     {
     case CSG_TYPE_OBJ:
-      mat4 m = objectMatrices[csg_data[i]];
-      mat4 mI = objectMatricesInverse[csg_data[i]];
-      int type = objectTypes[csg_data[i]];
+      int matriceIndice = int(csg_data[i]);
+      
+      mat4 m = objectMatrices[matriceIndice];
+      mat4 mI = objectMatricesInverse[matriceIndice];
+      int type = objectTypes[matriceIndice];
       int dataStartIndice = csg_objectDatasIndices[objectIndice];
 
       int materialIndice = objectIndice * materialSize;
-      vec3 c = vec3(
+      vec4 c = vec4(
         material[materialIndice], 
         material[materialIndice + 1], 
-        material[materialIndice + 2]);
-      float d = material[materialIndice + 3];
-      float s = material[materialIndice + 4];
-      float re = material[materialIndice + 5];
-      float ro = material[materialIndice + 6];
+        material[materialIndice + 2],
+        material[materialIndice + 3]);
+      float d = material[materialIndice + 4];
+      float s = material[materialIndice + 5];
+      float re = material[materialIndice + 6];
+      float ro = material[materialIndice + 7];
 
       float c_dist = max_dist;
       vec3 c_color;
       vec3 c_normal;
+      vec3 c_point = (mI * vec4(point, 1.0)).xyz;
+
+      vec3 normalOffset = rand_dir(point, time);
       switch (type)
       {
       case OBJ_TYPE_SPHERE:
         float radius = objectDatas[dataStartIndice];
-        sphereInfos((m * vec4(point, 1.0)).xyz, c_dist, c_normal);
-        c_normal = mI * vec4(c_normal, 1.0) - point;
-        vec3 normalOffset = rand_dir(point, time);
+        sphereInfos(c_point, radius, c_dist, c_normal);
+        c_normal = (m * vec4(c_normal, 0.0)).xyz;
+        c_normal = normalize(c_normal + normalOffset * ro * ro);
+        break;
+        
+      case OBJ_TYPE_CUBE:
+        float boundX = objectDatas[dataStartIndice];
+        float boundY = objectDatas[dataStartIndice + 1];
+        float boundZ = objectDatas[dataStartIndice + 2];
+        cubeInfos(c_point, vec3(boundX, boundY, boundZ), c_dist, c_normal);
+        c_normal = (m * vec4(c_normal, 0.0)).xyz;
+        c_normal = normalize(c_normal + normalOffset * ro * ro);
+        break;
+        
+      case OBJ_TYPE_PLANE:
+        float nX = objectDatas[dataStartIndice];
+        float nY = objectDatas[dataStartIndice + 1];
+        float nZ = objectDatas[dataStartIndice + 2];
+        planeInfos(c_point, vec3(nX, nY, nZ), c_dist, c_normal);
+        c_normal = (m * vec4(c_normal, 0.0)).xyz;
         c_normal = normalize(c_normal + normalOffset * ro * ro);
         break;
       }
       pushObject(c_dist, c_normal, c, d, s, re);
       objectIndice--;
+      
       break;
 
-    
+    case CSG_TYPE_UNION:
+      popObject(u_dist1, u_normal1, u_c1, u_d1, u_s1, u_re1);
+      popObject(u_dist2, u_normal2, u_c2, u_d2, u_s2, u_re2);
+      if (u_dist1 < u_dist2)
+      {
+        pushObject(u_dist1, u_normal1, u_c1, u_d1, u_s1, u_re1);
+      }
+      else
+      {
+        pushObject(u_dist2, u_normal2, u_c2, u_d2, u_s2, u_re2);
+      }
+      break;
+
+    case CSG_TYPE_INTERSECTION:
+      popObject(u_dist1, u_normal1, u_c1, u_d1, u_s1, u_re1);
+      popObject(u_dist2, u_normal2, u_c2, u_d2, u_s2, u_re2);
+      u_dist = max(u_dist1, u_dist2);
+      if (u_dist == u_dist1)
+      {
+        pushObject(u_dist1, u_normal1, u_c1, u_d1, u_s1, u_re1);
+      }
+      else
+      {
+        pushObject(u_dist2, u_normal2, u_c2, u_d2, u_s2, u_re2);
+      }
+      break;
+
+    case CSG_TYPE_DIFFERENCE:
+      popObject(u_dist1, u_normal1, u_c1, u_d1, u_s1, u_re1);
+      popObject(u_dist2, u_normal2, u_c2, u_d2, u_s2, u_re2);
+      u_dist = max(u_dist1, u_dist2);
+      if (u_dist == u_dist2)
+      {
+        pushObject(u_dist2, u_normal2, u_c2, u_d2, u_s2, u_re2);
+      }
+      else
+      {
+        pushObject(u_dist1, u_normal1, u_c1, u_d1, u_s1, u_re1);
+      }
+      break;
     }
   }
+  vec4 c;
+  float diffuse;
+  float specular;
+  float reflectivity;
+  popObject(dist, normale, c, diffuse, specular, reflectivity);
+  color = c.xyz;
+  return;
 
   vec3 mblur = movementBlur(point, dir, vec3(0.0, 1.0, 0.0));
   sphereInfos(point, vec3(0, -2, -5) + mblur * 0.0, 1.0, d, n);
@@ -298,8 +433,8 @@ void main() {
   
   if (moving > 0.0)
   {
-    epsilon = 0.05;
-    light_epsilon = 0.1;
+    epsilon = 0.1;
+    light_epsilon = 0.15;
     max_dist = 10.0;
     max_light_dist = 5.0;
   }

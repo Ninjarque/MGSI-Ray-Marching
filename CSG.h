@@ -14,7 +14,7 @@ class CSG
   //Et les branches possèdent deux sous arbre CSG et un type d'operation a effectuer
 public:
     enum Type {
-        Obj = -1,
+        Obj = 10,
         Union = 1,
         Difference = 2,
         Intersection = 3

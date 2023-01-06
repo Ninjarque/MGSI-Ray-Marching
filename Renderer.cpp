@@ -200,18 +200,19 @@ void Renderer::draw(Camera& camera, Scene& scene, float deltaTime){
 	scene.getInfos(objectMatrices, objectMaterials, objectTypes, objectDatas, 
 	csg_type, csg_value, csg_objectDatasIndices);
 	
-	glUniformMatrix4fv(locObjectMatrices, objectMatrices.size() * sizeof(mat4), 
-	GL_FALSE, &objectMatrices.data()[0][0][0]);
+	glUniformMatrix4fv(locObjectMatrices, objectMatrices.size(), 
+	GL_FALSE, glm::value_ptr(objectMatrices[0]));
 
 	vector<mat4> objectMatricesInverse(objectMatrices.size());
 	int i = 0;
 	for (auto matrice : objectMatrices)
 	{
 		objectMatricesInverse[i] = inverse(matrice);
+		//std::cout << glm::to_string(matrice) << ", invert : " << glm::to_string(objectMatricesInverse[i]) << std::endl;
 		i++;
 	}
-	glUniformMatrix4fv(locObjectMatricesInverse, objectMatricesInverse.size() * sizeof(mat4), 
-	GL_FALSE, &objectMatricesInverse.data()[0][0][0]);
+	glUniformMatrix4fv(locObjectMatricesInverse, objectMatricesInverse.size(), 
+	GL_FALSE, glm::value_ptr(objectMatricesInverse[0]));
 
 	vector<float> materials(objectMaterials.size() * 10);
 
@@ -245,23 +246,24 @@ void Renderer::draw(Camera& camera, Scene& scene, float deltaTime){
 		*/
 	}
 
-	glUniform4fv(locMaterial, materials.size() * sizeof(float), materials.data());
-	glUniform1i(locMaterialSize, objectMaterials.size() / x);
+	glUniform4fv(locMaterial, materials.size(), materials.data());
+	int materialSize = x / objectMaterials.size();
+	glUniform1i(locMaterialSize, materialSize);
 	/*
-	glUniform4fv(locColor, colors.size() * sizeof(float), colors.data());
-	glUniform1fv(locDiffuse, diffuse.size() * sizeof(float), diffuse.data());
-	glUniform1fv(locSpecular, specular.size() * sizeof(float), specular.data());
-	glUniform1fv(locReflection, reflection.size() * sizeof(float), reflection.data());
-	glUniform1fv(locRoughness, roughness.size() * sizeof(float), roughness.data());
+	glUniform4fv(locColor, colors.size(), colors.data());
+	glUniform1fv(locDiffuse, diffuse.size(), diffuse.data());
+	glUniform1fv(locSpecular, specular.size(), specular.data());
+	glUniform1fv(locReflection, reflection.size(), reflection.data());
+	glUniform1fv(locRoughness, roughness.size(), roughness.data());
 	*/
 
-	glUniform1iv(locObjectTypes, objectTypes.size() * sizeof(int), objectTypes.data());
-	glUniform1fv(locObjectDatas, objectDatas.size() * sizeof(float), objectDatas.data());
+	glUniform1iv(locObjectTypes, objectTypes.size(), objectTypes.data());
+	glUniform1fv(locObjectDatas, objectDatas.size(), objectDatas.data());
 	glUniform1i(locObjectNumber, objectTypes.size());
 	
-	glUniform1iv(locCsg_types, csg_type.size() * sizeof(int), csg_type.data());
-	glUniform1fv(locCsg_values, csg_value.size() * sizeof(float), csg_value.data());
-	glUniform1iv(locCsg_objectDatasIndices, csg_objectDatasIndices.size() * sizeof(int), csg_objectDatasIndices.data());
+	glUniform1iv(locCsg_types, csg_type.size(), csg_type.data());
+	glUniform1fv(locCsg_values, csg_value.size(), csg_value.data());
+	glUniform1iv(locCsg_objectDatasIndices, csg_objectDatasIndices.size(), csg_objectDatasIndices.data());
 	glUniform1i(locCsg_number, csg_type.size());
 
 	// */

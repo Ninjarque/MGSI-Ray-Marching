@@ -2,6 +2,8 @@
 #define RENDERER_H
 #include <GL/glew.h>
 #include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/string_cast.hpp>
 
 #include <iostream>
 #include <SDL/SDL.h>

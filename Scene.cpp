@@ -78,12 +78,12 @@ void Scene::reccursiveInfos(CSG* csg_actuel,
         csg_values.push_back(value);
 
         Object* o = csg_actuel->object;
-        mat4 t = translate(mat4(), o->getPosition());
+        mat4 t = translate(mat4(1.0f), o->getPosition());
         mat4 r = 
-            rotate(mat4(), o->getRotation().z, vec3(0.0f, 0.0f, 1.0f)) *
-            rotate(mat4(), o->getRotation().y, vec3(0.0f, 1.0f, 0.0f)) *
-            rotate(mat4(), o->getRotation().x, vec3(1.0f, 0.0f, 0.0f));
-        mat4 s = scale(mat4(), o->getScale());
+            rotate(mat4(1.0f), o->getRotation().z, vec3(0.0f, 0.0f, 1.0f)) *
+            rotate(mat4(1.0f), o->getRotation().y, vec3(0.0f, 1.0f, 0.0f)) *
+            rotate(mat4(1.0f), o->getRotation().x, vec3(1.0f, 0.0f, 0.0f));
+        mat4 s = scale(mat4(1.0f), o->getScale());
         mat4 matrix = t * r * s;
         //translate(mat4(), csg_actuel->object->getPosition()) * rotate(mat4(), csg_actuel->object->getRotation().length(), csg_actuel->object->getRotation()) * scale(mat4(), csg_actuel->object->getScale());
         
@@ -94,15 +94,14 @@ void Scene::reccursiveInfos(CSG* csg_actuel,
 
 
     }else{
-        reccursiveInfos(csg_actuel->childA, objectMatrices, objectMaterials,objectTypes, objectDatas,
-            csg_types, csg_values, csg_objectDatasIndices);
-        reccursiveInfos(csg_actuel->childB, objectMatrices, objectMaterials,objectTypes, objectDatas,
-            csg_types, csg_values, csg_objectDatasIndices);
-
         csg_types.push_back(csg_actuel->getType());
 
         int value = csg_actuel->value;
         csg_values.push_back(value);
+        reccursiveInfos(csg_actuel->childA, objectMatrices, objectMaterials,objectTypes, objectDatas,
+            csg_types, csg_values, csg_objectDatasIndices);
+        reccursiveInfos(csg_actuel->childB, objectMatrices, objectMaterials,objectTypes, objectDatas,
+            csg_types, csg_values, csg_objectDatasIndices);
 
     }
     /*

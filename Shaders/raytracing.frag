@@ -45,6 +45,80 @@ vec3 light_pos = vec3(-1.0, -7.0, -2.0);
 vec3 backgroundColor = vec3(0.4,0.5,1.0);
 vec3 ambientColor = vec3(0.1,0.2,0.4);
 
+const int maxObjects = 100;
+const int maxCSGs = 100;
+
+uniform mat4 objectMatrices[maxObjects];
+uniform mat4 objectMatricesInverse[maxObjects];
+uniform int objectTypes[maxObjects];
+uniform float objectDatas[maxObjects];
+uniform int objectNumber;
+
+uniform int csg_type[maxCSGs];
+uniform float csg_data[maxCSGs];
+uniform int csg_objectDatasIndices[maxCSGs];
+uniform int csg_number;
+
+uniform float material[maxObjects];
+uniform int materialSize;
+//uniform vec3 color[maxObjects];
+//uniform float diffuse[maxObjects];
+//uniform float specular[maxObjects];
+//uniform float reflection[maxObjects];
+//uniform float roughness[maxObjects];
+
+const int CSG_TYPE_OBJ = 10;
+const int CSG_TYPE_UNION = 1;
+const int CSG_TYPE_DIFFERENCE = 2;
+const int CSG_TYPE_INTERSECTION = 3;
+
+const int OBJ_TYPE_SPHERE = 1;
+const int OBJ_TYPE_CUBE = 2;
+const int OBJ_TYPE_PLANE = 3;
+const int OBJ_TYPE_TORUS = 4;
+
+float objectStack[maxObjects * 12];
+int objectStackIndice = 0;
+void pushObject(in float dist, in vec3 normal, in vec4 color, 
+  in float diffuse, in float specular, in float reflection, in bool hasHit)
+{
+  objectStack[objectStackIndice++] = dist;
+  objectStack[objectStackIndice++] = normal.x;
+  objectStack[objectStackIndice++] = normal.y;
+  objectStack[objectStackIndice++] = normal.z;
+  objectStack[objectStackIndice++] = color.x;
+  objectStack[objectStackIndice++] = color.y;
+  objectStack[objectStackIndice++] = color.z;
+  objectStack[objectStackIndice++] = color.w;
+  objectStack[objectStackIndice++] = diffuse;
+  objectStack[objectStackIndice++] = specular;
+  objectStack[objectStackIndice++] = reflection;
+  if (hasHit)
+    objectStack[objectStackIndice++] = 1.0f;
+  else
+    objectStack[objectStackIndice++] = 0.0f;
+}
+void popObject(out float dist, out vec3 normal, out vec4 color, 
+  out float diffuse, out float specular, out float reflection, out bool hasHit)
+{
+  normal = vec3(0.0, 0.0, 0.0);
+  color = vec4(0.0, 0.0, 0.0, 0.0);
+  float hit = 0.0;
+  hit = objectStack[--objectStackIndice];
+  hasHit = hit == 1.0;
+  reflection = objectStack[--objectStackIndice];
+  specular = objectStack[--objectStackIndice];
+  diffuse = objectStack[--objectStackIndice];
+  color.w = objectStack[--objectStackIndice];
+  color.z = objectStack[--objectStackIndice];
+  color.y = objectStack[--objectStackIndice];
+  color.x = objectStack[--objectStackIndice];
+  normal.z = objectStack[--objectStackIndice];
+  normal.y = objectStack[--objectStackIndice];
+  normal.x = objectStack[--objectStackIndice];
+  dist = objectStack[--objectStackIndice];
+}
+
 float rand(float co) { return fract(sin(co*(91.3458)) * 47453.5453); }
 float rand(vec2 co){ return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453); }
 float rand(vec3 co){ return rand(co.xy+rand(co.z)); }
@@ -56,6 +130,13 @@ float rand_gaussian(vec3 seed, float time)
   //return (u1 * 2.0 - 1.0 + u2 * 2.0 - 1.0) / 2.0;
   return sqrt(-2.0 * log(u1)) * cos(2.0 * 3.14159 * u2);
   //return pow(u1, 0.25) * 2.0 - 1.0;
+}
+vec3 rand_dir(vec3 seed, float time)
+{
+  return vec3(
+          rand_gaussian(-seed*3.0, -time),
+          rand_gaussian(seed*-2.0, time),
+          rand_gaussian(seed, time * 3.0));
 }
 
 vec3 movementBlur(vec3 point, vec3 dir, vec3 movement)
@@ -80,6 +161,37 @@ bool sphereInfos(vec3 point, vec3 dir, vec3 position, float radius, out float di
 
   return r;
 }
+bool sphereInfos(vec3 point, vec3 dir, float radius, out float dist, out vec3 normale)
+{
+  return sphereInfos(point, dir, vec3(0.0, 0.0, 0.0), radius, dist, normale);
+}
+bool cubeInfos(vec3 origin, vec3 dir, vec3 bounds, out float dist, out vec3 normal) {
+  // Calculate the intersection of the ray with the AABB
+  vec3 invDir = 1.0 / dir;
+  vec3 tmin = (bounds - origin) * invDir;
+  vec3 tmax = (-bounds - origin) * invDir;
+  vec3 t1 = min(tmin, tmax);
+  vec3 t2 = max(tmin, tmax);
+  float tnear = max(max(t1.x, t1.y), t1.z);
+  float tfar = min(min(t2.x, t2.y), t2.z);
+
+  // Check if the ray intersects the AABB
+  if (tnear > tfar || tfar < 0.0) {
+    return false;
+  }
+
+  // Calculate the intersection distance and normal
+  dist = tnear;
+  vec3 p = origin + dir * dist;
+  float stepM = max(max(p.x, p.y), p.z);
+  float stepm = min(min(p.x, p.y), p.z);
+  if (stepM > -stepm)
+    normal = step(stepM, p);
+  else
+    normal = -step(-stepm, -p);
+  return true;
+}
+
 bool planeInfos(vec3 point, vec3 dir, vec3 position, vec3 normale, out float dist, out vec3 n)
 {
   n = normalize(normale);
@@ -87,11 +199,180 @@ bool planeInfos(vec3 point, vec3 dir, vec3 position, vec3 normale, out float dis
   dist = -(dot(n,point)+h)/dot(n,dir);
   return (dist > 0.0) && (dist < max_dist);
 }
+bool planeInfos(vec3 point, vec3 dir, vec3 normale, out float dist, out vec3 n)
+{
+  return planeInfos(point, dir, vec3(0.0, 0.0, 0.0), normale, dist, n);
+}
 
 bool scene(vec3 point, vec3 dir, out float dist, out vec3 color, out vec3 normale,
 out float reflectivity, out float opacity, out float roughness)
 {
   bool hit = false;
+  dist = max_dist;
+  float d;
+  vec3 n;
+
+  int objectIndice = objectNumber - 1;
+  float u_dist = 0.0;
+  float u_dist1 = 0.0;
+  vec3 u_normal1;
+  vec4 u_c1;
+  float u_d1;
+  float u_s1;
+  float u_re1;
+  bool u_hit1;
+  float u_dist2 = 0.0;
+  vec3 u_normal2;
+  vec4 u_c2;
+  float u_d2;
+  float u_s2;
+  float u_re2;
+  bool u_hit2;
+  
+  bool hit_object = false;
+  for (int i = csg_number - 1; i >= 0; i--)
+  {
+    switch (csg_type[i])
+    {
+    case CSG_TYPE_OBJ:
+      int matriceIndice = int(csg_data[i]);
+      mat4 m = objectMatrices[matriceIndice];
+      mat4 mI = objectMatricesInverse[matriceIndice];
+      int type = objectTypes[matriceIndice];
+      int dataStartIndice = csg_objectDatasIndices[objectIndice];
+
+      int materialIndice = objectIndice * materialSize;
+      vec4 c = vec4(
+        material[materialIndice], 
+        material[materialIndice + 1], 
+        material[materialIndice + 2],
+        material[materialIndice + 3]);
+      float d = material[materialIndice + 4];
+      float s = material[materialIndice + 5];
+      float re = material[materialIndice + 6];
+      float ro = material[materialIndice + 7];
+
+      float c_dist = max_dist;
+      vec3 c_color;
+      vec3 c_normal;
+      vec3 c_point = (mI * vec4(point, 1.0)).xyz;
+
+      vec3 normalOffset = rand_dir(point, time);
+
+      hit_object = false;
+      switch (type)
+      {
+      case OBJ_TYPE_SPHERE:
+        float radius = objectDatas[dataStartIndice];
+        if (sphereInfos(c_point, dir, radius, c_dist, c_normal))
+        {  
+          c_normal = (m * vec4(c_normal, 0.0)).xyz;
+          c_normal = normalize(c_normal + normalOffset * ro * ro);
+          hit_object = true; 
+        }
+        break;
+        
+      case OBJ_TYPE_CUBE:
+        float boundX = objectDatas[dataStartIndice];
+        float boundY = objectDatas[dataStartIndice + 1];
+        float boundZ = objectDatas[dataStartIndice + 2];
+        if (cubeInfos(c_point, dir, vec3(boundX, boundY, boundZ), c_dist, c_normal))
+        {  
+          c_normal = (m * vec4(c_normal, 0.0)).xyz;
+          c_normal = normalize(c_normal + normalOffset * ro * ro);
+          hit_object = true; 
+        }
+        break;
+        
+      case OBJ_TYPE_PLANE:
+        float nX = objectDatas[dataStartIndice];
+        float nY = objectDatas[dataStartIndice + 1];
+        float nZ = objectDatas[dataStartIndice + 2];
+        if (planeInfos(c_point, dir, vec3(nX, nY, nZ), c_dist, c_normal))
+        {  
+          c_normal = (m * vec4(c_normal, 0.0)).xyz;
+          c_normal = normalize(c_normal + normalOffset * ro * ro);
+          hit_object = true; 
+        }
+        break;
+      }
+      pushObject(c_dist, c_normal, c, d, s, re, hit_object); 
+      objectIndice--;
+      
+      break;
+
+    case CSG_TYPE_UNION:
+      popObject(u_dist1, u_normal1, u_c1, u_d1, u_s1, u_re1, u_hit1);
+      popObject(u_dist2, u_normal2, u_c2, u_d2, u_s2, u_re2, u_hit2);
+      if (u_hit1 && u_hit2)
+      {
+        if (u_dist1 < u_dist2)
+        {
+          pushObject(u_dist1, u_normal1, u_c1, u_d1, u_s1, u_re1, u_hit1 || u_hit2);
+        }
+        else
+        {
+          pushObject(u_dist2, u_normal2, u_c2, u_d2, u_s2, u_re2, u_hit1 || u_hit2);
+        }
+      }
+      else
+      {
+        if (!u_hit1 && !u_hit2)
+        {
+          pushObject(max_dist, vec3(0.0,0.0,0.0), vec4(0.0,0.0,0.0,0.0), 0.0, 0.0, 0.0, false);
+        }
+        else if (u_hit1)
+          pushObject(u_dist1, u_normal1, u_c1, u_d1, u_s1, u_re1, u_hit1);
+        else
+          pushObject(u_dist2, u_normal2, u_c2, u_d2, u_s2, u_re2, u_hit1 || u_hit2);
+      }
+      break;
+
+    case CSG_TYPE_INTERSECTION:
+      popObject(u_dist1, u_normal1, u_c1, u_d1, u_s1, u_re1, u_hit1);
+      popObject(u_dist2, u_normal2, u_c2, u_d2, u_s2, u_re2, u_hit2);
+      u_dist = max(u_dist1, u_dist2);
+      if (u_hit1 && u_hit2)
+      {
+        if (u_dist == u_dist1)
+        {
+          pushObject(u_dist1, u_normal1, u_c1, u_d1, u_s1, u_re1, u_hit1 && u_hit2);
+        }
+        else
+        {
+          pushObject(u_dist2, u_normal2, u_c2, u_d2, u_s2, u_re2, u_hit1 && u_hit2);
+        }
+      }
+      else
+        pushObject(max_dist, vec3(0.0,0.0,0.0), vec4(0.0,0.0,0.0,0.0), 0.0, 0.0, 0.0, false);
+      break;
+
+    case CSG_TYPE_DIFFERENCE:
+      popObject(u_dist1, u_normal1, u_c1, u_d1, u_s1, u_re1, u_hit1);
+      popObject(u_dist2, u_normal2, u_c2, u_d2, u_s2, u_re2, u_hit2);
+      u_dist = max(u_dist1, u_dist2);
+      if (u_dist == u_dist2)
+      {
+        pushObject(u_dist2, u_normal2, u_c2, u_d2, u_s2, u_re2, u_hit2);
+      }
+      else
+      {
+        pushObject(u_dist1, u_normal1, u_c1, u_d1, u_s1, u_re1, u_hit1);
+      }
+      break;
+    }
+  }
+  vec4 c;
+  float diffuse;
+  float specular;
+  //float reflectivity;
+  popObject(dist, normale, c, diffuse, specular, reflectivity, hit);
+  color = c.xyz;
+  opacity = 1.0;
+  roughness = 0.0;
+  return hit;
+
+  /*
   dist = max_dist;
   float d;
   vec3 n;
@@ -137,18 +418,6 @@ out float reflectivity, out float opacity, out float roughness)
     opacity = 1.0;
     roughness = 0.0;
   }
-  /*
-  if (sphereInfos(point, dir, vec3(-8.5, -5.5, -4.5), 6.0, d, n) && d < dist)
-  {
-    dist = d;
-    color = vec3(0.0, 0.0, 1.0);
-    normale = n;
-    hit = true;
-    reflectivity = 0.0;
-    opacity = 1.0;
-    roughness = 0.0;
-  }
-  //*/
   if (planeInfos(point, dir, vec3(-5.0, 0.0, 0.0), vec3(1, 0, 0), d, n) && d < dist)
   {
     dist = d;
@@ -160,6 +429,7 @@ out float reflectivity, out float opacity, out float roughness)
     roughness = 0.3;
   }
   return hit;
+  */
 }
 
 bool hitScene(vec3 fromPoint, vec3 fromDir, 
