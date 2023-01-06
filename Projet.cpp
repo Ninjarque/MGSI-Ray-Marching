@@ -72,11 +72,14 @@ int main(int argc, char** argv)
     Renderer renderer(WIDTH, HEIGHT, shader);
 
     Scene scene;
-    Material material(vec3(1.0f,1.0f,1.0f), 0.7f, 20.0f, 0.0f);
-    Sphere sphere1(vec3(0.0f, 0.0f, -10.0f), 1.0f, material);
-    Cube cube1(vec3(1.0f, 0.0f, -10.0f), vec3(1.0f), material);
-    Cube cube2(vec3(3.0f, 1.0f, -10.0f), vec3(1.0f), material);
-    Plane plane(vec3(0.0f, 3.0f, 0.0f), vec3(0.0f, -1.0f, 0.0f), material);
+    Material white(vec3(1.0f,1.0f,1.0f), 0.7f, 20.0f, 0.2f);
+    Material red(vec3(1.0f,0.0f,0.0f), 0.7f, 20.0f, 0.3f);
+    Material gold(vec3(1.0f,0.86f,0.2f), 0.9f, 20.0f, 0.0f);
+
+    Sphere sphere1(vec3(0.0f, 0.0f, -5.0f), 1.0f, red);
+    Cube cube1(vec3(1.0f, 0.0f, -5.0f), vec3(1.0f), white);
+    Cube cube2(vec3(3.0f, 1.0f, -5.0f), vec3(1.0f), gold);
+    Plane plane(vec3(0.0f, 3.0f, 0.0f), vec3(0.0f, -1.0f, 0.0f), white);
 
     CSG csg(
             //new CSG(&sphere1), 

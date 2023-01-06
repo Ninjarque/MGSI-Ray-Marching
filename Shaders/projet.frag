@@ -209,7 +209,14 @@ void cubeInfos(vec3 point, vec3 bounds, out float dist, out vec3 normale)
 {
   vec3 q = abs(point) - bounds;
   dist = length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0);
-  normale = step(1.0, (point / length(point)));
+  //normale = step(1.0, (point / length(point)));
+  vec3 p = point;
+  float stepM = max(max(p.x, p.y), p.z);
+  float stepm = min(min(p.x, p.y), p.z);
+  if (stepM > -stepm)
+    normale = step(stepM, p);
+  else
+    normale = -step(-stepm, -p);
 }
 void planeInfos(vec3 point, vec3 n, vec3 planePoint, out float dist, out vec3 normale)
 {
@@ -271,7 +278,7 @@ void scene(vec3 point, vec3 dir, out float dist, out vec3 color, out vec3 normal
       int type = objectTypes[matriceIndice];
       int dataStartIndice = csg_objectDatasIndices[objectIndice];
 
-      int materialIndice = objectIndice * materialSize;
+      int materialIndice = matriceIndice * materialSize;
       vec4 c = vec4(
         material[materialIndice], 
         material[materialIndice + 1], 
@@ -283,7 +290,6 @@ void scene(vec3 point, vec3 dir, out float dist, out vec3 color, out vec3 normal
       float ro = material[materialIndice + 7];
 
       float c_dist = max_dist;
-      vec3 c_color;
       vec3 c_normal;
       vec3 c_point = (mI * vec4(point, 1.0)).xyz;
 
@@ -368,8 +374,8 @@ void scene(vec3 point, vec3 dir, out float dist, out vec3 color, out vec3 normal
   float reflectivity;
   popObject(dist, normale, c, diffuse, specular, reflectivity);
   color = c.xyz;
-  return;
-
+  
+  /*
   vec3 mblur = movementBlur(point, dir, vec3(0.0, 1.0, 0.0));
   sphereInfos(point, vec3(0, -2, -5) + mblur * 0.0, 1.0, d, n);
   if (d < dist)
@@ -392,15 +398,7 @@ void scene(vec3 point, vec3 dir, out float dist, out vec3 color, out vec3 normal
     color = vec3(0.0, 0.0, 1.0);
     normale = n;
   }
-  // /*
-  cubeInfos(point, vec3(2, 0, -5), vec3(1.0, 2.0, 1.0), d, n);
-  if (d < dist)
-  {
-    dist = d;
-    color = vec3(1.0, 1.0, 1.0);
-    normale = n;
-  }
-  // */
+  
   torusInfos(point, vec3(-2.5, 1, -4), vec2(1.5, 0.75), d, n);
   if (d < dist)
   {
@@ -408,6 +406,7 @@ void scene(vec3 point, vec3 dir, out float dist, out vec3 color, out vec3 normal
     color = vec3(1.0, 0.0, 1.0);
     normale = n;
   }
+  */
 }
 
 void main() {

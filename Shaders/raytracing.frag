@@ -241,7 +241,7 @@ out float reflectivity, out float opacity, out float roughness)
       int type = objectTypes[matriceIndice];
       int dataStartIndice = csg_objectDatasIndices[objectIndice];
 
-      int materialIndice = objectIndice * materialSize;
+      int materialIndice = matriceIndice * materialSize;
       vec4 c = vec4(
         material[materialIndice], 
         material[materialIndice + 1], 
@@ -253,7 +253,6 @@ out float reflectivity, out float opacity, out float roughness)
       float ro = material[materialIndice + 7];
 
       float c_dist = max_dist;
-      vec3 c_color;
       vec3 c_normal;
       vec3 c_point = (mI * vec4(point, 1.0)).xyz;
 

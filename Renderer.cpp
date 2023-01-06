@@ -214,7 +214,7 @@ void Renderer::draw(Camera& camera, Scene& scene, float deltaTime){
 	glUniformMatrix4fv(locObjectMatricesInverse, objectMatricesInverse.size(), 
 	GL_FALSE, glm::value_ptr(objectMatricesInverse[0]));
 
-	vector<float> materials(objectMaterials.size() * 10);
+	vector<float> materials;
 
 	/*
 	vector<float> colors(objectMaterials.size() * 4);
@@ -224,16 +224,15 @@ void Renderer::draw(Camera& camera, Scene& scene, float deltaTime){
 	vector<float> roughness(objectMaterials.size());
 	*/
 
-	int x = 0;
 	for(int i = 0; i < objectMaterials.size(); i++){
-		materials[x++] = objectMaterials[i].color.x;
-		materials[x++] = objectMaterials[i].color.y;
-		materials[x++] = objectMaterials[i].color.z;
-		materials[x++] = objectMaterials[i].color.w;
-		materials[x++] = objectMaterials[i].diffuse;
-		materials[x++] = objectMaterials[i].specular;
-		materials[x++] = objectMaterials[i].reflection;
-		materials[x++] = objectMaterials[i].roughness;
+		materials.push_back(objectMaterials[i].color.x);
+		materials.push_back(objectMaterials[i].color.y);
+		materials.push_back(objectMaterials[i].color.z);
+		materials.push_back(objectMaterials[i].color.w);
+		materials.push_back(objectMaterials[i].diffuse);
+		materials.push_back(objectMaterials[i].specular);
+		materials.push_back(objectMaterials[i].reflection);
+		materials.push_back(objectMaterials[i].roughness);
 		/*
 		colors[i*4+0] = objectMaterials[i].color.x;
 		colors[i*4+1] = objectMaterials[i].color.y;
@@ -245,9 +244,9 @@ void Renderer::draw(Camera& camera, Scene& scene, float deltaTime){
 		roughness[i] = objectMaterials[i].roughness;
 		*/
 	}
-
-	glUniform4fv(locMaterial, materials.size(), materials.data());
-	int materialSize = x / objectMaterials.size();
+	
+	glUniform1fv(locMaterial, materials.size(), materials.data());
+	int materialSize = materials.size() / objectMaterials.size();
 	glUniform1i(locMaterialSize, materialSize);
 	/*
 	glUniform4fv(locColor, colors.size(), colors.data());
