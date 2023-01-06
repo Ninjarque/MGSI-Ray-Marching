@@ -28,9 +28,16 @@ vec3 ambientColor = vec3(0.1,0.2,0.4);
 
 vec3 movement = vec3(1.9, 0.0, 0.0);
 
+/*
+  calcul du coefficient speculaire de la lumiere en un point :
+  
+   * calcul de la direction de la  lumiere qui est la difference entre sa position et le point ciblé
+     (pour des soucis de calcul le vecteur est normalisé )
+   *calcul de la direction du reflet en fonction de la normal et de l'inverse de la direction de la lumiere
+   *calcul du coef speculaire 
+*/
 
-// specular
- float specular(vec3 normal,vec3 point, vec3 camPos,vec3 light_pos){
+  float specular(vec3 normal,vec3 point, vec3 camPos,vec3 light_pos){
 	    vec3 light_dir =  light_pos - point;
         light_dir = normalize(light_dir);
         vec3 eyeDirection = normalize(camPos - point);
@@ -39,7 +46,11 @@ vec3 movement = vec3(1.9, 0.0, 0.0);
         spec = pow(spec, 15.);
       return spec;
 }
-//diffuse 
+/*cette fonction renvoie le coef de la lumiere diffuse ,apres ces quelques etapes :
+  calcul de la direction de la lumiere en fonction de sa position et du point ciblé 
+  normalisation de la direction de la lumiere 
+  calcul du coef diffuse 
+ */ 
 float  diffuse(vec3 normal,vec3 point, vec3 light_pos){ 
 	  vec3 light_dir =  light_pos - point;
       light_dir = normalize(light_dir);
@@ -51,6 +62,8 @@ float rand(float co) { return fract(sin(co*(91.3458)) * 47453.5453); }
 float rand(vec2 co){ return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453); }
 float rand(vec3 co){ return rand(co.xy+rand(co.z)); }
 float rand(vec3 co, float time){ return rand(co.xy+rand(co.z*time)); }
+
+//champs de distance des differentes objets de la scene 
 float rand_gaussian(vec3 seed, float time)
 {
   float u1 = max(rand(seed, time), 0.00001);
@@ -112,6 +125,7 @@ float torus( vec3 p, vec3 position, vec2 t)
   vec2 q = vec2(length(p.xz)-t.x,p.y);
   return length(q)-t.y;
 }
+
 
 void sphereInfos(vec3 point, vec3 position, float radius, out float dist, out vec3 normale)
 {
