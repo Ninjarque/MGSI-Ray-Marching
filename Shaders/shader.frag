@@ -197,7 +197,7 @@ void main() {
   //On crée un point focal appelé focalPoint a partir de la direction initial du rayon dir et d'une distance focale arbitraire, ici 5. On multiple ça par point pour que la variable FocalPoint soit considéré comme un Point.
   //FocalPoint représente le point qui va servir à déterminer si la camera est assez proche ou non pour voir de manière net un objet.
   vec3 FocalPoint = direction * focalDist + point;
-  /on crée un point aléatoire qu'on va utiliser pour deplacer la variale point, chaque coordonnée est calculée aléatoire avec la methode rand_gaussian
+  //on crée un point aléatoire qu'on va utiliser pour deplacer la variale point, chaque coordonnée est calculée aléatoire avec la methode rand_gaussian
   vec3 offsetpoint = vec3(
     rand_gaussian(dir,time),
     rand_gaussian(point*2.0+dir*2.0,-time*5.0),
