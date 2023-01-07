@@ -18,39 +18,43 @@ using namespace std;
 
 using namespace glm;
 
+
+// Fonction pour charger et compiler des vertex et fragment shaders
 GLuint LoadShaders(const char * vertex_file_path,const char * fragment_file_path);
 
 Renderer::Renderer(int width, int height, std::string shaderBaseName){
   screenWidth = width;
   screenHeight = height;
 
-  // create a new window
+ // Création d'une nouvelle fenêtre
   window = SDL_SetVideoMode(width, height, 16, SDL_OPENGL | SDL_DOUBLEBUF);
   if (!window)
   {
     printf("Unable to set %i, %i video: %s\n", width, height, SDL_GetError());
     return;
   }
-  // ATTENTION ne pas oublier l'initialisation de GLEW
+  //initialisation de GLEW
   GLenum err = glewInit();
 
-  //info version oenGL / GLSL :
-  //info version oenGL / GLSL :
+  // Affichage des informations sur la version OpenGL et GLSL
   std::cout << std::endl<< "***** Info GPU *****" << std::endl;
   std::cout << "Fabricant : " << glGetString (GL_VENDOR) << std::endl;
   std::cout << "Carte graphique: " << glGetString (GL_RENDERER) << std::endl;
   std::cout << "Version : " << glGetString (GL_VERSION) << std::endl;
 
+  // Initialisation d'OpenGL
   initOpenGL(shaderBaseName);
-
   time = 0.0f;
 }
+
 Renderer::~Renderer(){
   glDeleteProgram(programID);
   programID = -1;
 }
 
+// Méthode pour initialiser OpenGL
 void Renderer::initOpenGL(std::string shaderBaseName){
+	// Charge les shaders
   string vert = "./Shaders/" + shaderBaseName + ".vert";
   string frag = "./Shaders/" + shaderBaseName + ".frag";
   programID = LoadShaders(vert.c_str(), frag.c_str());
@@ -59,10 +63,11 @@ void Renderer::initOpenGL(std::string shaderBaseName){
   basicProgramID = LoadShaders("./basicShader.vert", "./basicShader.frag");
   currentBufferIndex = 0;
 
+	// Génère un framebuffer pour le buffer et le bind
   glGenFramebuffers(1, &newFramebuffer);
   glBindFramebuffer(GL_FRAMEBUFFER, newFramebuffer);
 
-  // generate texture
+	// Génère une texture
   glGenTextures(1, &newTextureBuffer);
   glBindTexture(GL_TEXTURE_2D, newTextureBuffer);
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, screenWidth, screenHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
@@ -70,13 +75,13 @@ void Renderer::initOpenGL(std::string shaderBaseName){
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   glBindTexture(GL_TEXTURE_2D, 0);
 
-  // attach it to currently bound framebuffer object
+	// Attache la texture au framebuffer courant
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, newTextureBuffer, 0);  
   
   glGenFramebuffers(1, &currentFramebuffer);
   glBindFramebuffer(GL_FRAMEBUFFER, currentFramebuffer);
 
-  // generate texture
+	// Génère une texture
   glGenTextures(1, &currentTextureBuffer);
   glBindTexture(GL_TEXTURE_2D, currentTextureBuffer);
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, screenWidth, screenHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
@@ -84,12 +89,12 @@ void Renderer::initOpenGL(std::string shaderBaseName){
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   glBindTexture(GL_TEXTURE_2D, 0);
 
-  // attach it to currently bound framebuffer object
+	// Attache la texture au framebuffer courant
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, currentTextureBuffer, 0);  
   
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-  // generate texture
+	// Génère une texture
   glGenTextures(1, &finalTextureBuffer);
   glBindTexture(GL_TEXTURE_2D, finalTextureBuffer);
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, screenWidth, screenHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
@@ -97,7 +102,8 @@ void Renderer::initOpenGL(std::string shaderBaseName){
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   glBindTexture(GL_TEXTURE_2D, 0);
   
-  // Get the uniform variables location. You've probably already done that before...
+
+  // récupère les location des variables uniformes
   currentFrameLocation = glGetUniformLocation(framebufferProgramID, "currentFrame");
   newFrameLocation  = glGetUniformLocation(framebufferProgramID, "newFrame");
   keepLastFrameLocation = glGetUniformLocation(framebufferProgramID, "keep");
@@ -127,69 +133,61 @@ void Renderer::initOpenGL(std::string shaderBaseName){
   //material
   locMaterial = glGetUniformLocation(programID, "material");
   locMaterialSize = glGetUniformLocation(programID, "materialSize");
-  /*
-  locColor = glGetUniformLocation(programID, "color");
-  locDiffuse = glGetUniformLocation(programID, "diffuse");
-  locSpecular = glGetUniformLocation(programID, "specular");
-  locReflection = glGetUniformLocation(programID, "reflection");
-  locRoughness = glGetUniformLocation(programID, "roughness");
-  */
-  //locMatrixIDObject = glGetUniformLocation(programID, "Object");
 
-  glGenVertexArrays(1, &vao);
-  
+  glGenVertexArrays(1, &vao);	// Génère un tableau de sommets et deux buffers de sommets 
   glGenBuffers(1, &vbo);
   glGenBuffers(1, &ebo);
-  glBindBuffer(GL_ARRAY_BUFFER, vbo);
 
-  glBindVertexArray(vao);
+  glBindBuffer(GL_ARRAY_BUFFER, vbo);		// Lie le buffer de sommets à l'objet de travail actuel
+
+  glBindVertexArray(vao); 	// Lie le VAO à l'objet actuel
 
   glBindBuffer(GL_ARRAY_BUFFER, vbo);  
-  glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), &vertices[0], GL_STATIC_DRAW);
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 5, (void*)0);
-  glEnableVertexAttribArray(0);  
-  //glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(vec2), &uvs[0], GL_STATIC_DRAW);
-  glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 5, (void*)(sizeof(float) * 3));
-  glEnableVertexAttribArray(1);
+  glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), &vertices[0], GL_STATIC_DRAW); // Envoie les données de sommets au buffer de sommets en mémoire
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 5, (void*)0); // Définit comment les données de sommets seront interprétées
+ 
+ 
+  glEnableVertexAttribArray(0);   	 // Active l'attribut de sommet 0
+  glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 5, (void*)(sizeof(float) * 3)); // Définit comment les données de sommets seront interprétées
+  glEnableVertexAttribArray(1);		// Active l'attribut de sommet 1
 
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), &indices[0], GL_STATIC_DRAW);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);		// Lie le buffer d'indices à l'objet actuel
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), &indices[0], GL_STATIC_DRAW);		// Envoie les données d'indices au buffer d'indices en mémoire
   
+ 	// Délie le VAO et le buffer de sommets de l'objet de travail actuel
   glBindVertexArray(0);
   glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
 void Renderer::draw(Camera& camera, Scene& scene, float deltaTime){
-	glBindFramebuffer(GL_FRAMEBUFFER, newFramebuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, newFramebuffer);	// Fixer le tampon de rendu actif
 
 	glUseProgram(programID);
-	glViewport(0,0,screenWidth,screenHeight);
+	glViewport(0,0,screenWidth,screenHeight); // Définir la taille de la vue
 
 	mat4 rotation = camera.getRotationMatrix();
-	glUniformMatrix4fv(locCameraRotation, 1, GL_FALSE, &rotation[0][0]);
-	glUniform3f(locCameraPosition,camera.getPosition().x,camera.getPosition().y,camera.getPosition().z);
-	glUniform2f(locFieldOfView, camera.getFieldOfView().x, camera.getFieldOfView().y);
-	glUniform2f(locScreenSize, (float)screenWidth, (float)screenHeight);
+	glUniformMatrix4fv(locCameraRotation, 1, GL_FALSE, &rotation[0][0]);	// Envoyer la matrice de la caméra au shader
+	glUniform3f(locCameraPosition,camera.getPosition().x,camera.getPosition().y,camera.getPosition().z);	// Envoyer la position de la caméra au shader
+	glUniform2f(locFieldOfView, camera.getFieldOfView().x, camera.getFieldOfView().y);	// Envoyer le FOV de la caméra au shader
+	glUniform2f(locScreenSize, (float)screenWidth, (float)screenHeight);		// Envoyer la taille de l'écran au shader
 
-	glUniform1f(locDeltaTime, deltaTime);
+	glUniform1f(locDeltaTime, deltaTime);	// Envoyer l'écart de temps et le temps écoulé au shader
 	glUniform1f(locTime, time);
-	time += deltaTime;
-	bool redraw =  false;
+
+	time += deltaTime;	//ajouter le temps
+		//determiner si la camera a bougé
+	bool redraw =  false;	
 	steps++;
 	if (camera.isMoved())
 	{
 		time = 0.0f;
-		camera.moveResolved();
+		camera.moveResolved();	// Indiquer que la caméra a été déplacée
 		redraw = true;
 		steps = 1;
 	}
-	glUniform1f(locMoving, (redraw) ? 1.0f : 0.0f);
+	glUniform1f(locMoving, (redraw) ? 1.0f : 0.0f);	// Envoyer l'information de mouvement de la caméra au shader
 
-	// /*CODE POUR ENVOYER LES INFOS DE LA SCENE AU SHADER A FAIRE ICI
-	//L'objectif est d'envoyer des listes de donnees au shader
-	//Pour se faire, il faudra decommenter cette partie :
-	//
-	// /*
+	// Initialisation les informations de la scène (matrices, matériaux, types d'objets, etc.) à envoyer au shader
 	vector<mat4> objectMatrices;
 	vector<Material> objectMaterials; 	
 	vector<int> objectTypes;
@@ -197,33 +195,29 @@ void Renderer::draw(Camera& camera, Scene& scene, float deltaTime){
 	vector<int> csg_type;
 	vector<float> csg_value;
 	vector<int> csg_objectDatasIndices;
+		// Récupère les informations de la scène à envoyer au shader
 	scene.getInfos(objectMatrices, objectMaterials, objectTypes, objectDatas, 
 	csg_type, csg_value, csg_objectDatasIndices);
 	
+		// Envoie les matrices de transformation des objets au shader
 	glUniformMatrix4fv(locObjectMatrices, objectMatrices.size(), 
 	GL_FALSE, glm::value_ptr(objectMatrices[0]));
 
+		// Calcule les matrices de transformation inverses pour chaque objet de la scène
 	vector<mat4> objectMatricesInverse(objectMatrices.size());
 	int i = 0;
 	for (auto matrice : objectMatrices)
 	{
 		objectMatricesInverse[i] = inverse(matrice);
-		//std::cout << glm::to_string(matrice) << ", invert : " << glm::to_string(objectMatricesInverse[i]) << std::endl;
 		i++;
 	}
+
+	// Envoie les matrices de transformation inverses au shader
 	glUniformMatrix4fv(locObjectMatricesInverse, objectMatricesInverse.size(), 
 	GL_FALSE, glm::value_ptr(objectMatricesInverse[0]));
 
+		// Prépare les données de chaque matériau pour être envoyées au shader
 	vector<float> materials;
-
-	/*
-	vector<float> colors(objectMaterials.size() * 4);
-	vector<float> diffuse(objectMaterials.size());
-	vector<float> specular(objectMaterials.size());
-	vector<float> reflection(objectMaterials.size());
-	vector<float> roughness(objectMaterials.size());
-	*/
-
 	for(int i = 0; i < objectMaterials.size(); i++){
 		materials.push_back(objectMaterials[i].color.x);
 		materials.push_back(objectMaterials[i].color.y);
@@ -233,97 +227,73 @@ void Renderer::draw(Camera& camera, Scene& scene, float deltaTime){
 		materials.push_back(objectMaterials[i].specular);
 		materials.push_back(objectMaterials[i].reflection);
 		materials.push_back(objectMaterials[i].roughness);
-		/*
-		colors[i*4+0] = objectMaterials[i].color.x;
-		colors[i*4+1] = objectMaterials[i].color.y;
-		colors[i*4+2] = objectMaterials[i].color.z;
-		colors[i*4+3] = objectMaterials[i].color.w;
-		diffuse[i] = objectMaterials[i].diffuse;
-		specular[i] = objectMaterials[i].specular;
-		reflection[i] = objectMaterials[i].reflection;
-		roughness[i] = objectMaterials[i].roughness;
-		*/
 	}
-	
+		// Envoie les propriétés matérielles au shader
 	glUniform1fv(locMaterial, materials.size(), materials.data());
 	int materialSize = materials.size() / objectMaterials.size();
-	glUniform1i(locMaterialSize, materialSize);
-	/*
-	glUniform4fv(locColor, colors.size(), colors.data());
-	glUniform1fv(locDiffuse, diffuse.size(), diffuse.data());
-	glUniform1fv(locSpecular, specular.size(), specular.data());
-	glUniform1fv(locReflection, reflection.size(), reflection.data());
-	glUniform1fv(locRoughness, roughness.size(), roughness.data());
-	*/
+	glUniform1i(locMaterialSize, materialSize);	 // Envoie le nombre de propriétés matérielles par objet au shader
 
+		// Envoie les types d'objets au shader
 	glUniform1iv(locObjectTypes, objectTypes.size(), objectTypes.data());
 	glUniform1fv(locObjectDatas, objectDatas.size(), objectDatas.data());
+		// Envoie le nombre d'objets au shader
 	glUniform1i(locObjectNumber, objectTypes.size());
 	
-	glUniform1iv(locCsg_types, csg_type.size(), csg_type.data());
-	glUniform1fv(locCsg_values, csg_value.size(), csg_value.data());
-	glUniform1iv(locCsg_objectDatasIndices, csg_objectDatasIndices.size(), csg_objectDatasIndices.data());
-	glUniform1i(locCsg_number, csg_type.size());
+	glUniform1iv(locCsg_types, csg_type.size(), csg_type.data());	// Envoie les types de CSG au shader
+	glUniform1fv(locCsg_values, csg_value.size(), csg_value.data());	// Envoie les valeurs de CSG au shader
+	glUniform1iv(locCsg_objectDatasIndices, csg_objectDatasIndices.size(), csg_objectDatasIndices.data()); // Envoie les indices des objets de CSG au shader
+	glUniform1i(locCsg_number, csg_type.size());	// Envoie le nombre de CSG au shader
 
-	// */
-	/*les parametres sont note comme ca car il faut les creer avant la fonction et les passer dedans pour qu'elle les initialise
-	les donnees a envoyer (uniform ou buffer), devront respecter ce format
-	objectMatrices, array de mat4
-	objectMaterials, array de float, avec pour chaque Material 8 float en taille (vec4 couleur, plus 4 floats des proprietes), 
-		c'est important de connaitre sa taille exacte en unite pour les arrays qui convertissent un type
-	objectTypes, array de int, pourrait meme etre des unsigned char tellement il n'y aura pas beaucoup de types
-	objectDatas, array de float
+		
+	glClear(GL_COLOR_BUFFER_BIT);	// Efface le buffer de couleur
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);	// Définit la couleur de fond
 
-	*/
-	glClear(GL_COLOR_BUFFER_BIT);
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
-	glBindVertexArray(vao);
+	glBindVertexArray(vao);	// Lie le Vertex Array Object et dessine les triangles
 	glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
 
-	//glUseProgram(0);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, currentFramebuffer); // back to default
-	//return;
-	glUseProgram(framebufferProgramID);
-	glViewport(0,0,screenWidth,screenHeight);
 
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f); 
+	glUseProgram(framebufferProgramID);
+	glViewport(0,0,screenWidth,screenHeight); // Utilise le programme de Framebuffer et spécifie la vue à utiliser
+
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // Efface le buffer de couleur
 	glClear(GL_COLOR_BUFFER_BIT);
   
-	glDisable(GL_DEPTH_TEST);
+	glDisable(GL_DEPTH_TEST);	// Désactive le test de profondeur
 
-	glUniform1i(currentFrameLocation, 0);
-	glUniform1i(newFrameLocation, 1);
-	if (redraw || wasRedrawn)
-	{
-		glUniform1f(keepLastFrameLocation, 0.0f);
+	glUniform1i(currentFrameLocation, 0); // Envoie l'emplacement de la texture du Framebuffer courant au shader
+	glUniform1i(newFrameLocation, 1); // Envoie l'emplacement de la texture du nouveau Framebuffer au shader
+
+	if (redraw || wasRedrawn)	
+	{							//l'image doit être redessinée ou a été redessinée 
+		glUniform1f(keepLastFrameLocation, 0.0f);		// Envoie 0.0 au shader pour indiquer de ne pas garder l'image précédente
 	}
 	else{
-		glUniform1f(keepLastFrameLocation, 1.0f);
+		glUniform1f(keepLastFrameLocation, 1.0f);	// Envoie 1.0 au shader pour indiquer de garder l'image précédente
 	}
-	glUniform1f(timeFrameLocation, time);
-	glUniform1i(stepsFrameLocation, steps);
+	glUniform1f(timeFrameLocation, time);		// Envoie le temps écoulé depuis le début de l'application au shader
+	glUniform1i(stepsFrameLocation, steps);		// Envoie le nombre de pas de temps (étapes) au shader
 
-	glActiveTexture(GL_TEXTURE0 + 0); // Texture unit 0
+	// Active la texture du Framebuffer courant et lie la texture au contexte OpenGL
+	glActiveTexture(GL_TEXTURE0 + 0); 
 	glBindTexture(GL_TEXTURE_2D, finalTextureBuffer);
-	glActiveTexture(GL_TEXTURE0 + 1); // Texture unit 1
+	// Active la texture du nouveau Framebuffer et lie la texture au contexte OpenGL
+	glActiveTexture(GL_TEXTURE0 + 1); 
 	glBindTexture(GL_TEXTURE_2D, newTextureBuffer);
 	
-	glBindVertexArray(vao);
+	glBindVertexArray(vao);	// Lie le VAO et dessine les triangles en utilisant les indices stockés dans le VBO d'indices
 	glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
 
-	//glActiveTexture(GL_TEXTURE0 + 0); // Texture unit 0
-	glBindTexture(GL_TEXTURE_2D, finalTextureBuffer);
+	glBindTexture(GL_TEXTURE_2D, finalTextureBuffer);		// Lie la texture du Framebuffer final et copie l'image du nouveau Framebuffer dans la texture
 	glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, screenWidth, screenHeight);
 
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	glUseProgram(basicProgramID);
-	//glClearColor(0.0f, 0.0f, 0.0f, 1.0f); 
-	//glClear(GL_COLOR_BUFFER_BIT);
-	glActiveTexture(GL_TEXTURE0 + 0); // Texture unit 1
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);	// Lie le Framebuffer par défaut
+	glUseProgram(basicProgramID);			// Utilise le programme de base 
+	glActiveTexture(GL_TEXTURE0 + 0); 		// Active la texture du Framebuffer final et la lie au contexte OpenGL
 	glBindTexture(GL_TEXTURE_2D, finalTextureBuffer);
-	glBindVertexArray(vao);
+	glBindVertexArray(vao);					// Lie le VAO et dessine les triangles en utilisant les indices stockés dans le VBO d'indices
 	glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
 
 	wasRedrawn = redraw;
@@ -360,12 +330,8 @@ GLuint LoadShaders(const char * vertex_file_path,const char * fragment_file_path
 		FragmentShaderStream.close();
 	}
 
-
-
 	GLint Result = GL_FALSE;
 	int InfoLogLength;
-
-
 
 	// Compile Vertex Shader
 	printf("Compiling shader : %s\n", vertex_file_path);
@@ -398,7 +364,6 @@ GLuint LoadShaders(const char * vertex_file_path,const char * fragment_file_path
 		glGetShaderInfoLog(FragmentShaderID, InfoLogLength, NULL, &FragmentShaderErrorMessage[0]);
 		printf("%s\n", &FragmentShaderErrorMessage[0]);
 	}
-
 
 
 	// Link the program
